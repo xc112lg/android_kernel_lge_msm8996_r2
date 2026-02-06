@@ -868,3 +868,4 @@ CONFIG_SERIO_SERPORT=n
 CONFIG_ARM64_ERRATUM_843419=n # This erratum is for Cortex A53, hence, doesn't apply to kryo
 CONFIG_ARM64_MODULE_CMODEL_LARGE=n # Meant to be used alongside the erratum above
 CONFIG_MSM_KERNEL_PROTECT=n
+CONFIG_MSM_EXT_DISPLAY=y
