@@ -53,24 +53,32 @@
 
 /* From usb dtsi - different tuning */
 &qusb_phy0 {
+#ifdef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_CA
+	qcom,qusb-phy-tune = <0x28 0x93 0x83 0xC7>;
+#else
 	qcom,qusb-phy-tune = <0x38 0x53 0x83 0xC7>;
+#endif
 	qcom,qusb-phy-tune-host = <0x28 0x93 0x83 0xC7>;
 };
 
 /* From pm dtsi */
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_CA
 &pmi8994_gpios {
 	gpio@c300 {	/* GPIO 4 - NC */
 		qcom,master-en = <0>;	/* Disable GPIO */
 		status = "okay";
 	};
 };
+#endif
 
-/* From pm dtsi */
+/* GLOBAL_CA has wireless charging. Not fair... */
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_CA
 &i2c_6 {
-        idtp9223-charger@61 {
-                status = "disabled";
-        };
+	idtp9223-charger@61 {
+		status = "disabled";
+	};
 };
+#endif
 
 &soc {
 	wdog: qcom,wdt@9830000 {
