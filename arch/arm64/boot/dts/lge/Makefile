@@ -20,6 +20,10 @@ ifeq ($(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM),y)
 DTS_TARGET := g6/lucye_global_com
 endif
 
+ifeq ($(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_CA),y)
+DTS_TARGET := g6/lucye_global_com
+endif
+
 ## LG V20
 ifeq ($(CONFIG_MACH_MSM8996_ELSA_KR),y)
 DTS_TARGET := v20/elsa_kr

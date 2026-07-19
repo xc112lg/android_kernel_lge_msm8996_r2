@@ -78,6 +78,13 @@ config MACH_MSM8996_LUCYE_GLOBAL_COM
 	help
 	  Support for the Qualcomm MSM8996 LUCYE_GLOBAL_COM device.
 
+config MACH_MSM8996_LUCYE_GLOBAL_CA
+	bool "MSM8996 LUCYE_GLOBAL CA"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_GLOBAL_CA device.
+
 config MACH_MSM8996_ELSA
 	bool "MSM8996 ELSA (V20)"
 	depends on ARCH_MSM8996
