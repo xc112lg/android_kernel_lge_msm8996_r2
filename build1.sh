@@ -228,7 +228,8 @@ export LOCALVERSION="-${VER}"
 export CROSS_COMPILE=$GCC_COMP
 export CROSS_COMPILE_ARM32=$GCC_COMP_32
 if [ "$USE_CCACHE" = "yes" ]; then
-  export CCACHE_DIR="${CCACHE_DIR:-$HOME/.ccache}"
+  export CCACHE_DIR="/tmp/src/android/ccache"
+  mkdir -p "$CCACHE_DIR" || ABORT "Failed to create $CCACHE_DIR"
   MAKE_CC="ccache ${GCC_COMP}gcc"
 else
   MAKE_CC="${GCC_COMP}gcc"
