@@ -29,7 +29,7 @@ cat << EOF
 ## AnyKernel setup
 # begin properties
 properties() { '
-kernel.string=$DEVICE Kernel by askermk2000 & AShiningRay @ xda-developers
+kernel.string=$DEVICE Kernel by askermk2000 & AShiningRay @ xda-developers, continued by xc112lg
 do.devicecheck=1
 do.modules=0
 do.ssdtrim=0
