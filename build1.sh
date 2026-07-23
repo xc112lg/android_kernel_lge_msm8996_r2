@@ -225,12 +225,13 @@ export ARCH=arm64
 export KBUILD_BUILD_USER=$KBUSER
 export KBUILD_BUILD_HOST=$KBHOST
 export LOCALVERSION="-${VER}"
+export CROSS_COMPILE=$GCC_COMP
+export CROSS_COMPILE_ARM32=$GCC_COMP_32
 if [ "$USE_CCACHE" = "yes" ]; then
-  export CROSS_COMPILE="ccache $GCC_COMP"
-  export CROSS_COMPILE_ARM32="ccache $GCC_COMP_32"
+  export CCACHE_DIR="${CCACHE_DIR:-$HOME/.ccache}"
+  MAKE_CC="ccache ${GCC_COMP}gcc"
 else
-  export CROSS_COMPILE=$GCC_COMP
-  export CROSS_COMPILE_ARM32=$GCC_COMP_32
+  MAKE_CC="${GCC_COMP}gcc"
 fi
 
 # In case a model isn't passed as an argument, this block acts as a fallback
@@ -347,10 +348,10 @@ SETUP_BUILD() {
 	echo "$DEVICE" > $BDIR/DEVICE \
 		|| echo -e $COLOR_R"Failed to reflect device!"
     if [ $SINGLEBUILD = "yes" ]; then
-	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG \
+	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CC="$MAKE_CC" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG \
 		    || ABORT "Failed to set up the kernel build."
     else # build_all will send make output to a file
-        make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG &> zBuild_all.log \
+        make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CC="$MAKE_CC" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG &> zBuild_all.log \
 		    || ABORT "Failed to set up the kernel build."
     fi
 }
@@ -359,7 +360,7 @@ BUILD_KERNEL() {
 	    echo -e $COLOR_G"Compiling kernel for ${DEVICE}..."$COLOR_N
 	    TIMESTAMP1=$(date +%s)
     if [ $SINGLEBUILD = "yes" ]; then
-        while ! make -C "$RDIR" O=$BDIR -j"$THREADS"; do
+        while ! make -C "$RDIR" O=$BDIR CC="$MAKE_CC" -j"$THREADS"; do
 		    read -rp "Build failed. Retry? " do_retry
 		    case $do_retry in
 			    Y|y) continue ;;
@@ -367,7 +368,7 @@ BUILD_KERNEL() {
 		    esac
 	    done
     else # build_all will send compile logs to a file
-	    while ! make -C "$RDIR" O=$BDIR -j"$THREADS" &> zBuild_all.log; do
+	    while ! make -C "$RDIR" O=$BDIR CC="$MAKE_CC" -j"$THREADS" &> zBuild_all.log; do
 		    read -rp "Build failed. Retry? " do_retry
 		    case $do_retry in
 			    Y|y) continue ;;
