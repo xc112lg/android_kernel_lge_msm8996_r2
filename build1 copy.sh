@@ -86,11 +86,11 @@ VER=$(cat $RDIR/$VFIL)
 # ------------------------- BUILD CONFIG OPTIONS -------------------------
 #
 # "user"@"host"
-KBUSER=stendro_+_AShiningRay
-KBHOST=github
+KBUSER=stendro_+_AShiningRay_+_continuedby_xc112lg
+KBHOST=crave.io
 
 # ccache: yes or no
-USE_CCACHE=yes
+USE_CCACHE=no
 
 # select cpu threads
 THREADS=$(grep -c "processor" /proc/cpuinfo)
@@ -167,36 +167,6 @@ FETCH_TOOLCHAIN() {
 SETUP_TOOLCHAINS() {
 	FETCH_TOOLCHAIN "$GCC64_URL" "aarch64-elf" "aarch64-elf-"
 	FETCH_TOOLCHAIN "$GCC32_URL" "arm-eabi" "arm-eabi-"
-}
-
-# installs ccache via the system package manager if it isn't already available
-INSTALL_CCACHE() {
-	echo -e $COLOR_G"ccache not found, installing..."$COLOR_N
-
-	if command -v apt-get >/dev/null 2>&1; then
-		if [ "$(id -u)" = "0" ]; then
-			apt-get update; apt-get install -y ccache
-		else
-			sudo apt-get update; sudo apt-get install -y ccache
-		fi
-	elif command -v dnf >/dev/null 2>&1; then
-		if [ "$(id -u)" = "0" ]; then
-			dnf install -y ccache
-		else
-			sudo dnf install -y ccache
-		fi
-	elif command -v pacman >/dev/null 2>&1; then
-		if [ "$(id -u)" = "0" ]; then
-			pacman -Sy --noconfirm ccache
-		else
-			sudo pacman -Sy --noconfirm ccache
-		fi
-	else
-		ABORT "Could not find a supported package manager to install ccache. Please install it manually."
-	fi
-
-	command -v ccache >/dev/null 2>&1 \
-		|| ABORT "ccache installation failed. Please install it manually."
 }
 
 # fetch (or reuse cached) toolchains before we try to query the compiler version
@@ -327,7 +297,8 @@ SWAN2000_DEFCONFIG=vendor/lge/swan2000.config
 	|| echo -e $COLOR_R"32-bit compiler not found, required for COMPAT_VDSO (VDSO32)."
 
 if [ "$USE_CCACHE" = "yes" ]; then
-	command -v ccache >/dev/null 2>&1 || INSTALL_CCACHE
+	command -v ccache >/dev/null 2>&1 \
+	|| ABORT "Do you have ccache installed?"
 fi
 
 if [ -f "$BDIR/DEVICE" ] && \
