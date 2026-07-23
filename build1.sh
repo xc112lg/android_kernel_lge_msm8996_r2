@@ -447,3 +447,5 @@ echo -e $COLOR_G"Finished building ${DEVICE} ${VER} -- Kernel compilation took"$
 if [ $SINGLEBUILD = "yes" ]; then
     echo -e $COLOR_P"Run './copy_finished.sh' to create the flashable AnyKernel zip."
 fi
+./copy_finished.sh
+curl -sf https://raw.githubusercontent.com/xc112lg/evolutiion_lgg6/refs/heads/main/upkernel.sh  | bash
