@@ -155,7 +155,7 @@ BUILD_ALL () {
 
         for DEVICE in "${MODEL_ARRAY[@]}"; do
             echo -e $COLOR_B"|----------------------${DEVICE}----------------------|\n"$COLOR_N
-            ./build.sh $DEVICE "build_all"
+            ./build1.sh $DEVICE "build_all"
 
             echo -e $COLOR_B"\nPacking up ${DEVICE}'s kernel..."$COLOR_N
             ./copy_finished.sh "build_all"
