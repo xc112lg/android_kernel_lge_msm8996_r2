@@ -1072,9 +1072,6 @@ static int32_t msm_actuator_claf_move_focus(
 	}
 	CDBG("Exit\n");
 
-	/* mitigate mm-qcamera-daemon PDAF race on direction change */
-	usleep_range(4000, 6000);
-
 	return rc;
 }
 #endif
@@ -1196,7 +1193,6 @@ static int32_t msm_actuator_bivcm_move_focus(
 	move_params->curr_lens_pos = curr_lens_pos;
 	a_ctrl->i2c_tbl_index = 0;
 	CDBG("Exit\n");
-
 	return rc;
 }
 
