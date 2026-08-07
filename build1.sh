@@ -165,29 +165,35 @@ FETCH_TOOLCHAIN() {
 		|| ABORT "Toolchain install verification failed for ${dest}/bin/${prefix}gcc"
 }
 
-# queries the GitHub API for the latest Eva GCC release and fills in
-# GCC64_URL / GCC32_URL with the matching asset download URLs
+# how many of the most recent releases to scan when resolving assets
+# (some releases only carry one of the two architectures)
+EVAGCC_SCAN_RELEASES=10
+
+# queries the GitHub API for the N most recent Eva GCC releases and fills in
+# GCC64_URL / GCC32_URL, each from the newest release that actually contains
+# that architecture (not necessarily the same release for both)
 RESOLVE_EVAGCC_URLS() {
 	# already resolved (or overridden by the user above), skip
 	[ -n "$GCC64_URL" ] && [ -n "$GCC32_URL" ] && return 0
 
-	echo -e $COLOR_G"Resolving latest Eva GCC release from ${EVAGCC_REPO}..."$COLOR_N
+	echo -e $COLOR_G"Resolving latest Eva GCC assets from ${EVAGCC_REPO}..."$COLOR_N
 
-	local api_url="https://api.github.com/repos/${EVAGCC_REPO}/releases/latest"
-	local release_json
-	release_json=$(curl -sf "$api_url") \
-		|| ABORT "Failed to query GitHub API for latest release of ${EVAGCC_REPO}"
+	local api_url="https://api.github.com/repos/${EVAGCC_REPO}/releases?per_page=${EVAGCC_SCAN_RELEASES}"
+	local releases_json
+	releases_json=$(curl -sf "$api_url") \
+		|| ABORT "Failed to query GitHub API for releases of ${EVAGCC_REPO}"
 
-	# pull every browser_download_url out of the release JSON
+	# every browser_download_url across the scanned releases, newest first
+	# (the API returns releases newest-to-oldest, so first match = newest)
 	local asset_urls
-	asset_urls=$(echo "$release_json" | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4)
-	[ -n "$asset_urls" ] || ABORT "No assets found in latest release of ${EVAGCC_REPO}"
+	asset_urls=$(echo "$releases_json" | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4)
+	[ -n "$asset_urls" ] || ABORT "No assets found in the last ${EVAGCC_SCAN_RELEASES} releases of ${EVAGCC_REPO}"
 
 	[ -z "$GCC64_URL" ] && GCC64_URL=$(echo "$asset_urls" | grep -m1 'eva-gcc-arm64-')
-	[ -z "$GCC32_URL" ] && GCC32_URL=$(echo "$asset_urls" | grep -m1 -E 'eva-gcc-arm-')
+	[ -z "$GCC32_URL" ] && GCC32_URL=$(echo "$asset_urls" | grep -m1 -E 'eva-gcc-arm-[0-9]')
 
-	[ -n "$GCC64_URL" ] || ABORT "Could not find an arm64 asset in latest release of ${EVAGCC_REPO}"
-	[ -n "$GCC32_URL" ] || ABORT "Could not find an arm asset in latest release of ${EVAGCC_REPO}"
+	[ -n "$GCC64_URL" ] || ABORT "Could not find an arm64 asset in the last ${EVAGCC_SCAN_RELEASES} releases of ${EVAGCC_REPO}"
+	[ -n "$GCC32_URL" ] || ABORT "Could not find an arm asset in the last ${EVAGCC_SCAN_RELEASES} releases of ${EVAGCC_REPO}"
 
 	echo -e $COLOR_G"Latest arm64: $(basename "$GCC64_URL")"$COLOR_N
 	echo -e $COLOR_G"Latest arm32: $(basename "$GCC32_URL")"$COLOR_N
