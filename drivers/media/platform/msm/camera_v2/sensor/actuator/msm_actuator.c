@@ -1071,7 +1071,7 @@ static int32_t msm_actuator_claf_move_focus(
 		return rc;
 	}
 	CDBG("Exit\n");
-usleep_range(4000, 6000);
+usleep_range(6000, 8000);
 	return rc;
 }
 #endif
