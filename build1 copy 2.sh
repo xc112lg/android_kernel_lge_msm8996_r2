@@ -98,10 +98,9 @@ THREADS=$(grep -c "processor" /proc/cpuinfo)
 # root directory where toolchains are downloaded/extracted to
 TOOLCHAINS_DIR=/tmp/src/android/toolchains
 
-# toolchain source repo (Eva GCC) - URLs are resolved to the latest release at runtime
-EVAGCC_REPO="mvaisakh/gcc-build"
-GCC64_URL=""
-GCC32_URL=""
+# toolchain download URLs (Eva GCC)
+GCC64_URL="https://github.com/mvaisakh/gcc-build/releases/download/19072026/eva-gcc-arm64-19072026.xz"
+GCC32_URL="https://github.com/mvaisakh/gcc-build/releases/download/19072026/eva-gcc-arm-19072026.xz"
 
 # directory containing cross-compiler
 # a newer toolchain (gcc8+) is recommended due to changes made
@@ -165,36 +164,7 @@ FETCH_TOOLCHAIN() {
 		|| ABORT "Toolchain install verification failed for ${dest}/bin/${prefix}gcc"
 }
 
-# queries the GitHub API for the latest Eva GCC release and fills in
-# GCC64_URL / GCC32_URL with the matching asset download URLs
-RESOLVE_EVAGCC_URLS() {
-	# already resolved (or overridden by the user above), skip
-	[ -n "$GCC64_URL" ] && [ -n "$GCC32_URL" ] && return 0
-
-	echo -e $COLOR_G"Resolving latest Eva GCC release from ${EVAGCC_REPO}..."$COLOR_N
-
-	local api_url="https://api.github.com/repos/${EVAGCC_REPO}/releases/latest"
-	local release_json
-	release_json=$(curl -sf "$api_url") \
-		|| ABORT "Failed to query GitHub API for latest release of ${EVAGCC_REPO}"
-
-	# pull every browser_download_url out of the release JSON
-	local asset_urls
-	asset_urls=$(echo "$release_json" | grep -o '"browser_download_url": *"[^"]*"' | cut -d'"' -f4)
-	[ -n "$asset_urls" ] || ABORT "No assets found in latest release of ${EVAGCC_REPO}"
-
-	[ -z "$GCC64_URL" ] && GCC64_URL=$(echo "$asset_urls" | grep -m1 'eva-gcc-arm64-')
-	[ -z "$GCC32_URL" ] && GCC32_URL=$(echo "$asset_urls" | grep -m1 -E 'eva-gcc-arm-')
-
-	[ -n "$GCC64_URL" ] || ABORT "Could not find an arm64 asset in latest release of ${EVAGCC_REPO}"
-	[ -n "$GCC32_URL" ] || ABORT "Could not find an arm asset in latest release of ${EVAGCC_REPO}"
-
-	echo -e $COLOR_G"Latest arm64: $(basename "$GCC64_URL")"$COLOR_N
-	echo -e $COLOR_G"Latest arm32: $(basename "$GCC32_URL")"$COLOR_N
-}
-
 SETUP_TOOLCHAINS() {
-	RESOLVE_EVAGCC_URLS
 	FETCH_TOOLCHAIN "$GCC64_URL" "aarch64-elf" "aarch64-elf-"
 	FETCH_TOOLCHAIN "$GCC32_URL" "arm-eabi" "arm-eabi-"
 }
