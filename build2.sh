@@ -204,12 +204,12 @@ else
 fi
 
 # In case a model isn't passed as an argument, this block acts as a fallback
-MODEL_ARRAY=("H850" "H830" "RS988" "H870" "US997" "H872" "H910" "H918" "H990" "LS997" "US996" "US996D" "VS995")
+MODEL_ARRAY=("H850" "H830" "RS988" "H870" "H870d" "US997" "H872" "H910" "H918" "H990" "LS997" "US996" "US996D" "VS995")
 FALLBACK_GET_VARIANT() {
 	if [[ ${SELECTED_MODEL} = "" ]]; then
 		echo -e "List of available variants:"
 		echo -e "G5  -> [$COLOR_C H850, H830, RS988 $COLOR_N]"
-		echo -e "G6  -> [$COLOR_C H870, US997, H872 $COLOR_N]"
+		echo -e "G6  -> [$COLOR_C H870, H870d, US997, H872 $COLOR_N]"
 		echo -e "V20 -> [$COLOR_C H910, H918, H990, LS997, US996, US996D (Dirtysanta), VS995 $COLOR_N]"
 		read -p "Please select your model:" DEVICE
 	fi
@@ -246,6 +246,9 @@ elif [ "$DEVICE" = "RS988" ]; then
   BOARD_DEFCONFIG=vendor/lge/lge_alice_common.config
 elif [ "$DEVICE" = "H870" ]; then
   DEVICE_DEFCONFIG=vendor/lge/h870.config
+  BOARD_DEFCONFIG=vendor/lge/lge_lucye_common.config
+elif [ "$DEVICE" = "H870d" ]; then
+  DEVICE_DEFCONFIG=vendor/lge/h870d.config
   BOARD_DEFCONFIG=vendor/lge/lge_lucye_common.config
 elif [ "$DEVICE" = "H872" ]; then
   DEVICE_DEFCONFIG=vendor/lge/h872.config
