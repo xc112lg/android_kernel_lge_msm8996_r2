@@ -4303,72 +4303,6 @@ wl_set_set_cipher(struct net_device *dev, struct cfg80211_connect_params *sme)
 	return err;
 }
 
-#ifdef MFP
-static s32
-wl_cfg80211_set_mfp(struct bcm_cfg80211 *cfg,
-	struct net_device *dev,
-	struct cfg80211_connect_params *sme)
-{
-	s32 mfp = WL_MFP_NONE;
-	s32 current_mfp = WL_MFP_NONE;
-	bcm_tlv_t *wpa2_ie;
-	u8 rsn_cap[2] = {0};
-	bool fw_support = false;
-	int err;
-
-	if (!sme) {
-		/* No connection params from userspace, Do nothing. */
-		return 0;
-	}
-
-	/* Check fw support and retreive current mfp val */
-	err = wldev_iovar_getint(dev, "mfp", &current_mfp);
-	if (!err) {
-		fw_support = true;
-	}
-
-	/* Parse the wpa2ie to decode the MFP capablity */
-	if (((wpa2_ie = bcm_parse_tlvs((u8 *)sme->ie, sme->ie_len,
-		DOT11_MNG_RSN_ID)) != NULL) &&
-		(wl_cfg80211_get_rsn_capa(wpa2_ie, rsn_cap) == 0)) {
-			/* Check for MFP cap in the RSN capability field */
-			if (rsn_cap[0] & RSN_CAP_MFPR) {
-				mfp = WL_MFP_REQUIRED;
-			} else if (rsn_cap[0] & RSN_CAP_MFPC) {
-				mfp = WL_MFP_CAPABLE;
-			}
-	}
-
-	WL_DBG((" mfp:%d wpa2_ie ptr:%p rsn_cap 0x%x%x fw mfp support:%d\n",
-		mfp, wpa2_ie, rsn_cap[0], rsn_cap[1], fw_support));
-
-	if (fw_support == false) {
-		if (mfp) {
-			/* if mfp > 0, mfp capability set in wpa ie, but
-			 * FW indicated error for mfp. Propagate the error up.
-			 */
-			WL_ERR(("mfp capability found in wpaie. But fw doesn't"
-				"seem to support MFP\n"));
-			return -EINVAL;
-		} else {
-			/* Firmware doesn't support mfp. But since connection request
-			 * is for non-mfp case, don't bother.
-			 */
-			return 0;
-		}
-	} else if (mfp != current_mfp) {
-		err = wldev_iovar_setint(dev, "mfp", mfp);
-		if (unlikely(err)) {
-			WL_ERR(("mfp (%d) set failed ret:%d \n", mfp, err));
-			return err;
-		}
-		WL_DBG(("mfp set to 0x%x \n", mfp));
-	}
-
-	return 0;
-}
-#endif /* MFP */
-
 static s32
 wl_set_key_mgmt(struct net_device *dev, struct cfg80211_connect_params *sme)
 {
@@ -4377,6 +4311,11 @@ wl_set_key_mgmt(struct net_device *dev, struct cfg80211_connect_params *sme)
 	s32 val = 0;
 	s32 err = 0;
 	s32 bssidx;
+#ifdef MFP
+	s32 mfp = WL_MFP_NONE;
+	bcm_tlv_t *wpa2_ie;
+	u8 rsn_cap[2];
+#endif /* MFP */
 
 	if ((bssidx = wl_get_bssidx_by_wdev(cfg, dev->ieee80211_ptr)) < 0) {
 		WL_ERR(("Find p2p index from wdev(%p) failed\n", dev->ieee80211_ptr));
@@ -4407,8 +4346,8 @@ wl_set_key_mgmt(struct net_device *dev, struct cfg80211_connect_params *sme)
 				break;
 #endif
 			default:
-				WL_ERR(("invalid akm suite (0x%x)\n",
-					sme->crypto.akm_suites[0]));
+				WL_ERR(("invalid cipher group (%d)\n",
+					sme->crypto.cipher_group));
 				return -EINVAL;
 			}
 		} else if (val & (WPA2_AUTH_PSK |
@@ -4447,8 +4386,8 @@ wl_set_key_mgmt(struct net_device *dev, struct cfg80211_connect_params *sme)
 				break;
 #endif
 			default:
-				WL_ERR(("invalid akm suite (0x%x)\n",
-					sme->crypto.akm_suites[0]));
+				WL_ERR(("invalid cipher group (%d)\n",
+					sme->crypto.cipher_group));
 				return -EINVAL;
 			}
 		}
@@ -4462,24 +4401,51 @@ wl_set_key_mgmt(struct net_device *dev, struct cfg80211_connect_params *sme)
 				val = WAPI_AUTH_PSK;
 				break;
 			default:
-				WL_ERR(("invalid akm suite (0x%x)\n",
-					sme->crypto.akm_suites[0]));
+				WL_ERR(("invalid cipher group (%d)\n",
+					sme->crypto.cipher_group));
 				return -EINVAL;
 			}
 		}
 #endif
 
 #ifdef MFP
-		if ((err = wl_cfg80211_set_mfp(cfg, dev, sme)) < 0) {
-			WL_ERR(("MFP set failed err:%d\n", err));
-			return -EINVAL;
+		if (((wpa2_ie = bcm_parse_tlvs((u8 *)sme->ie, sme->ie_len,
+			DOT11_MNG_RSN_ID)) != NULL) &&
+			(wl_cfg80211_get_rsn_capa(wpa2_ie, rsn_cap) == 0)) {
+				/* Check for MFP cap in the RSN capability field */
+				if (rsn_cap[0] & RSN_CAP_MFPR) {
+					mfp = WL_MFP_REQUIRED;
+				} else if (rsn_cap[0] & RSN_CAP_MFPC) {
+					mfp = WL_MFP_CAPABLE;
+				}
+		}
+		err = wldev_iovar_setint(dev, "mfp", mfp);
+		if (unlikely(err)) {
+			if (!mfp && (err == BCME_UNSUPPORTED)) {
+				/* For non-mfp cases, if firmware doesn't support MFP
+				 * ignore the failure and proceed ahead.
+				 */
+				WL_DBG(("fw doesn't support mfp \n"));
+				err = 0;
+#if defined(CUSTOMER_HW10)
+			} else if (err == BCME_NOTDOWN) {
+				WL_DBG(("Current state is not down \n"));
+				err = 0;
+#endif
+			} else {
+				WL_ERR(("mfp set failed ret:%d \n", err));
+				return err;
+			}
+		} else {
+			WL_DBG(("mfp set to 0x%x \n", mfp));
 		}
 #endif /* MFP */
 
 		WL_DBG(("setting wpa_auth to 0x%x\n", val));
+
 		err = wldev_iovar_setint_bsscfg(dev, "wpa_auth", val, bssidx);
 		if (unlikely(err)) {
-			WL_ERR(("could not set wpa_auth (0x%x)\n", err));
+			WL_ERR(("could not set wpa_auth (%d)\n", err));
 			return err;
 		}
 	}
@@ -6937,10 +6903,11 @@ wl_cfg80211_mgmt_tx(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev,
 
 	WL_DBG(("Enter \n"));
 
-	if (len > (ACTION_FRAME_SIZE + DOT11_MGMT_HDR_LEN)) {
+	if (len > ACTION_FRAME_SIZE) {
 		WL_ERR(("bad length:%zu\n", len));
-		return BCME_BADARG;
+		return BCME_BADLEN;
 	}
+
 	dev = cfgdev_to_wlc_ndev(cfgdev, cfg);
 
 	if (!dev) {
@@ -11679,16 +11646,22 @@ wl_notify_rx_mgmt_frame(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 	wl_event_rx_frame_data_t *rxframe;
 	u32 event;
 	u8 *mgmt_frame;
-	u8 bsscfgidx = e->bsscfgidx;
-	u32 mgmt_frame_len = ntoh32(e->datalen);
-	u16 channel = ((ntoh16(rxframe->channel) & WL_CHANSPEC_CHAN_MASK));
-
-	if (mgmt_frame_len < sizeof(wl_event_rx_frame_data_t)) {
-		WL_ERR(("wrong datalen:%d\n", mgmt_frame_len));
+	u8 bsscfgidx;
+	u32 mgmt_frame_len;
+	u16 channel;
+	if (ntoh32(e->datalen) < sizeof(wl_event_rx_frame_data_t)) {
+		WL_ERR(("wrong datalen:%d\n", ntoh32(e->datalen)));
 		return -EINVAL;
 	}
-	mgmt_frame_len -= sizeof(wl_event_rx_frame_data_t);
-
+	mgmt_frame_len = ntoh32(e->datalen) - sizeof(wl_event_rx_frame_data_t);
+	event = ntoh32(e->event_type);
+	bsscfgidx = e->bsscfgidx;
+	rxframe = (wl_event_rx_frame_data_t *)data;
+	if (!rxframe) {
+		WL_ERR(("rxframe: NULL\n"));
+		return -EINVAL;
+	}
+	channel = (ntoh16(rxframe->channel) & WL_CHANSPEC_CHAN_MASK);
 	memset(&bssid, 0, ETHER_ADDR_LEN);
 
 	ndev = cfgdev_to_wlc_ndev(cfgdev, cfg);
@@ -11873,8 +11846,7 @@ wl_notify_rx_mgmt_frame(struct bcm_cfg80211 *cfg, bcm_struct_cfgdev *cfgdev,
 		mgmt_frame = (u8 *)(data);
 		mgmt_frame_len = ntoh32(e->datalen);
 		if (mgmt_frame_len < DOT11_MGMT_HDR_LEN) {
-			WL_ERR(("WLC_E_PROBREQ_MSG - wrong datalen:%d\n",
-				mgmt_frame_len));
+			WL_ERR(("wrong datalen:%d\n", mgmt_frame_len));
 			return -EINVAL;
 		}
 		prbreq_ie_len = mgmt_frame_len - DOT11_MGMT_HDR_LEN;
