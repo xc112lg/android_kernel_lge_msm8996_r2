@@ -1,0 +1,79 @@
+name: Build Swan2000 (All Devices)
+
+# Runs the existing build_all.sh (which builds every supported device),
+# then uploads every .zip produced to a GitHub Release.
+#
+# Trigger it either by:
+#   - pushing a tag like "v1.2.3"  -> creates/updates a release named after the tag
+#   - manually via "Run workflow"  -> creates/updates a release named by run number
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to create/upload a release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install base build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential bc bison flex libssl-dev libelf-dev \
+            wget tar ccache zip unzip kmod
+
+      - name: Make scripts executable
+        run: |
+          chmod +x build_all.sh build1.sh copy_finished.sh || true
+
+      - name: Run build_all.sh for all devices
+        run: |
+          # build_all.sh interactively asks "Do you wish to build for all
+          # supported devices? [yes, anything_else_thats_not_yes] -> "
+          # Feed it "yes" non-interactively.
+          echo "yes" | ./build_all.sh
+
+      - name: Locate built zip files
+        id: find_zips
+        run: |
+          # copy_finished.sh writes each finished build to:
+          #   out/<DEVICE>_<VERSION>-Swan2000.zip
+          mapfile -t ZIPS < <(find out -maxdepth 1 -type f -name "*.zip" 2>/dev/null)
+
+          # Fallback in case the layout ever changes
+          if [ "${#ZIPS[@]}" -eq 0 ]; then
+            echo "No zips found directly under out/, searching recursively as a fallback..."
+            mapfile -t ZIPS < <(find . -type f -name "*.zip" -not -path "./.git/*")
+          fi
+
+          if [ "${#ZIPS[@]}" -eq 0 ]; then
+            echo "::error::No .zip files were found after the build. Check copy_finished.sh's output path."
+            exit 1
+          fi
+
+          echo "Found ${#ZIPS[@]} zip file(s):"
+          printf '%s\n' "${ZIPS[@]}"
+
+          {
+            echo "zips<<EOF"
+            printf '%s\n' "${ZIPS[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload zips to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "${{ github.ref_type == 'tag' && github.ref_name || format('run-{0}', github.run_number) }}"
+          name: "${{ github.ref_type == 'tag' && github.ref_name || format('Manual build #{0}', github.run_number) }}"
+          files: ${{ steps.find_zips.outputs.zips }}
+          fail_on_unmatched_files: true
