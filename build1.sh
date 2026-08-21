@@ -90,7 +90,7 @@ KBUSER=stendro_+_AShiningRay_+_continued_by_xc112lg
 KBHOST=crave.io
 
 # ccache: yes or no
-USE_CCACHE=yes
+USE_CCACHE=no
 
 # select cpu threads
 THREADS=$(grep -c "processor" /proc/cpuinfo)
@@ -122,7 +122,7 @@ COLOR_P="\033[1;35m"
 
 ABORT() {
 	echo -e $COLOR_R"Error: $*"
-	#exit 1
+	exit 1
 }
 
 # downloads & extracts a toolchain archive if it isn't already present
@@ -400,13 +400,8 @@ BUILD_KERNEL() {
 	    echo -e $COLOR_G"Compiling kernel for ${DEVICE}..."$COLOR_N
 	    TIMESTAMP1=$(date +%s)
     if [ $SINGLEBUILD = "yes" ]; then
-        while ! make -C "$RDIR" O=$BDIR CC="$MAKE_CC" -j"$THREADS"; do
-		    read -rp "Build failed. Retry? " do_retry
-		    case $do_retry in
-			    Y|y) continue ;;
-			    *) ABORT "Compilation aborted." ;;
-		    esac
-	    done
+ ABORT "Compilation aborted."
+
     else # build_all will send compile logs to a file
 	    while ! make -C "$RDIR" O=$BDIR CC="$MAKE_CC" -j"$THREADS" &> zBuild_all.log; do
 		    read -rp "Build failed. Retry? " do_retry
@@ -459,24 +454,9 @@ fi
 
 # ask before cleaning if device
 # is the same as previous build
-if [ $SINGLEBUILD = "yes" ]; then
-    if [ "$ASK_CLEAN" = "yes" ]; then
-      while true; do
-        echo -e $COLOR_Y
-        read -p "Same device as the last build. Do you wish to clean the build directory?" yn
-        echo -e $COLOR_N
-        case $yn in
-          [Yy]* ) CLEAN_BUILD && break ;;
-          [Nn]* ) break ;;
-          * ) echo -e $COLOR_R"Please answer 'y' or 'n'"$COLOR_N ;;
-        esac
-      done
-    else
+
     CLEAN_BUILD
-    fi
-else # Always clean build folder for next build on build_all
-    CLEAN_BUILD
-fi
+
 SETUP_BUILD
 BUILD_KERNEL
 INSTALL_MODULES
