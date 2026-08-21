@@ -1,4 +1,3 @@
-
 #include <linux/sched.h>
 #include <linux/sched/sysctl.h>
 #include <linux/sched/rt.h>
@@ -2654,6 +2653,18 @@ static inline unsigned long cpu_util_freq(int cpu)
 				 walt_ravg_window >> SCHED_LOAD_SHIFT);
 #endif
 	return (util >= capacity) ? capacity : util;
+}
+
+static inline unsigned long task_util(struct task_struct *p)
+{
+#ifdef CONFIG_SCHED_WALT
+	if (!walt_disabled && sysctl_sched_use_walt_cpu_util) {
+		unsigned long demand = p->ravg.demand;
+
+		return (demand << 10) / walt_ravg_window;
+	}
+#endif
+	return p->se.avg.util_avg;
 }
 
 #endif
