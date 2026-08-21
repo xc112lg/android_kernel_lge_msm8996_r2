@@ -168,9 +168,7 @@ struct msm_hs_tx {
 	wait_queue_head_t wait;
 	int tx_count;
 	dma_addr_t dma_base;
-	struct kthread_work kwork;
-	struct kthread_worker kworker;
-	struct task_struct *task;
+	struct work_struct work;
 	struct msm_hs_sps_ep_conn_data cons;
 	struct timer_list tx_timeout_timer;
 };
@@ -189,9 +187,7 @@ struct msm_hs_rx {
 	unsigned char *buffer;
 	unsigned int buffer_pending;
 	struct delayed_work flip_insert_work;
-	struct kthread_work kwork;
-	struct kthread_worker kworker;
-	struct task_struct *task;
+	struct work_struct work;
 	struct msm_hs_sps_ep_conn_data prod;
 	unsigned long queued_flag;
 	unsigned long pending_flag;
@@ -293,7 +289,7 @@ static struct platform_driver msm_serial_hs_platform_driver;
 static struct uart_driver msm_hs_driver;
 static struct uart_ops msm_hs_ops;
 static void msm_hs_start_rx_locked(struct uart_port *uport);
-static void msm_serial_hs_rx_work(struct kthread_work *work);
+static void msm_serial_hs_rx_work(struct work_struct *work);
 static void flip_insert_work(struct work_struct *work);
 static void msm_hs_bus_voting(struct msm_hs_port *msm_uport, unsigned int vote);
 static struct msm_hs_port *msm_hs_get_hs_port(int port_index);
@@ -1638,7 +1634,7 @@ static void flip_insert_work(struct work_struct *work)
 	tty_flip_buffer_push(tty->port);
 }
 
-static void msm_serial_hs_rx_work(struct kthread_work *work)
+static void msm_serial_hs_rx_work(struct work_struct *work)
 {
 	int retval;
 	int rx_count = 0;
@@ -1655,8 +1651,8 @@ static void msm_serial_hs_rx_work(struct kthread_work *work)
 	struct platform_device *pdev;
 	const struct msm_serial_hs_platform_data *pdata;
 
-	msm_uport = container_of((struct kthread_work *) work,
-				 struct msm_hs_port, rx.kwork);
+	msm_uport = container_of( work,
+				 struct msm_hs_port, rx.work);
 	msm_hs_resource_vote(msm_uport);
 	uport = &msm_uport->uport;
 	tty = uport->state->port.tty;
@@ -1823,8 +1819,8 @@ static void msm_hs_start_tx_locked(struct uart_port *uport)
 
 	if (!tx->dma_in_flight) {
 		tx->dma_in_flight = true;
-		queue_kthread_work(&msm_uport->tx.kworker,
-			&msm_uport->tx.kwork);
+		queue_work(system_wq,
+			&msm_uport->tx.work);
 	}
 }
 
@@ -1853,16 +1849,16 @@ static void msm_hs_sps_tx_callback(struct sps_event_notify *notify)
 		msm_uport->uport.line);
 
 	del_timer(&msm_uport->tx.tx_timeout_timer);
-	MSM_HS_DBG("%s(): Queue kthread work", __func__);
-	queue_kthread_work(&msm_uport->tx.kworker, &msm_uport->tx.kwork);
+	MSM_HS_DBG("%s(): Queue work", __func__);
+	queue_work(system_wq, &msm_uport->tx.work);
 }
 
-static void msm_serial_hs_tx_work(struct kthread_work *work)
+static void msm_serial_hs_tx_work(struct work_struct *work)
 {
 	unsigned long flags;
 	struct msm_hs_port *msm_uport =
-			container_of((struct kthread_work *)work,
-			struct msm_hs_port, tx.kwork);
+			container_of(work,
+			struct msm_hs_port, tx.work);
 	struct uart_port *uport = &msm_uport->uport;
 	struct circ_buf *tx_buf = &uport->state->xmit;
 	struct msm_hs_tx *tx = &msm_uport->tx;
@@ -1967,8 +1963,8 @@ static void msm_hs_sps_rx_callback(struct sps_event_notify *notify)
 			__func__, inx,
 			msm_uport->rx.pending_flag & ~(1<<inx));
 		}
-		queue_kthread_work(&msm_uport->rx.kworker,
-				&msm_uport->rx.kwork);
+		queue_work(system_wq,
+				&msm_uport->rx.work);
 		MSM_HS_DBG("%s(): Scheduled rx_tlet", __func__);
 	}
 }
@@ -2585,7 +2581,7 @@ static int msm_hs_startup(struct uart_port *uport)
 	}
 
 	/* Connect RX */
-	flush_kthread_worker(&msm_uport->rx.kworker);
+	flush_work(&msm_uport->rx.work);
 	if (rx->flush != FLUSH_SHUTDOWN)
 		disconnect_rx_endpoint(msm_uport);
 	ret = msm_hs_spsconnect_rx(uport);
@@ -2697,26 +2693,11 @@ static int uartdm_init_port(struct uart_port *uport)
 	init_waitqueue_head(&tx->wait);
 	init_waitqueue_head(&msm_uport->bam_disconnect_wait);
 
-	/* Init kernel threads for tx and rx */
+	/* Init work queues for tx and rx */
 
-	init_kthread_worker(&rx->kworker);
-	rx->task = kthread_run(kthread_worker_fn,
-			&rx->kworker, "msm_serial_hs_%d_rx_work", uport->line);
-	if (IS_ERR(rx->task)) {
-		MSM_HS_ERR("%s(): error creating task", __func__);
-		goto exit_lh_init;
-	}
-	init_kthread_work(&rx->kwork, msm_serial_hs_rx_work);
+	INIT_WORK(&rx->work, msm_serial_hs_rx_work);
 
-	init_kthread_worker(&tx->kworker);
-	tx->task = kthread_run(kthread_worker_fn,
-			&tx->kworker, "msm_serial_hs_%d_tx_work", uport->line);
-	if (IS_ERR(tx->task)) {
-		MSM_HS_ERR("%s(): error creating task", __func__);
-		goto exit_lh_init;
-	}
-
-	init_kthread_work(&tx->kwork, msm_serial_hs_tx_work);
+	INIT_WORK(&tx->work, msm_serial_hs_tx_work);
 
 	rx->buffer = dma_alloc_coherent(uport->dev,
 				UART_DMA_DESC_NR * UARTDM_RX_BUF_SIZE,
@@ -2736,10 +2717,6 @@ static int uartdm_init_port(struct uart_port *uport)
 
 	return ret;
 exit_lh_init:
-	kthread_stop(rx->task);
-	rx->task = NULL;
-	kthread_stop(tx->task);
-	tx->task = NULL;
 	return ret;
 }
 
@@ -3563,7 +3540,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 
 	msm_uport->wakeup.enabled = false;
 	/* make sure tx lh finishes */
-	flush_kthread_worker(&msm_uport->tx.kworker);
+	flush_work(&msm_uport->tx.work);
 	ret = wait_event_timeout(msm_uport->tx.wait,
 			uart_circ_empty(tx_buf), 500);
 	if (!ret)
@@ -3573,7 +3550,7 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	/* Stop remote side from sending data */
 	msm_hs_disable_flow_control(uport, false);
 	/* make sure rx lh finishes */
-	flush_kthread_worker(&msm_uport->rx.kworker);
+	flush_work(&msm_uport->rx.work);
 
 	if (msm_uport->rx.flush != FLUSH_SHUTDOWN) {
 		/* disable and disconnect rx */

@@ -14,6 +14,21 @@
 #include "tune.h"
 #include "walt.h"
 
+/* Ensure task_util() is available - required for CPU selection with WALT */
+#ifndef task_util
+/*
+ * Fallback task_util() implementation for kernels where WALT
+ * is not fully integrated into scheduler headers
+ */
+static inline unsigned long task_util(struct task_struct *p)
+{
+	/* Return task's average utilization from WALT tracking */
+	if (p && p->se.avg.util_avg)
+		return p->se.avg.util_avg;
+	return 0;
+}
+#endif
+
 int sched_rr_timeslice = RR_TIMESLICE;
 int sysctl_sched_rr_timeslice = (MSEC_PER_SEC * RR_TIMESLICE) / HZ;
 
