@@ -44,7 +44,11 @@
 #define __ARM_NR_compat_cacheflush	(__ARM_NR_COMPAT_BASE+2)
 #define __ARM_NR_compat_set_tls		(__ARM_NR_COMPAT_BASE+5)
 
+<<<<<<< HEAD
 #define __NR_compat_syscalls		435
+=======
+#define __NR_compat_syscalls		442
+>>>>>>> msm8998/lineage-24.0
 #endif
 
 #define __ARCH_WANT_SYS_CLONE

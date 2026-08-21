@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 ccflags-y := -Idrivers/staging/android
 ccflags-$(CONFIG_DEBUG_KGSL)	+= -DDEBUG
+=======
+ccflags-y := -I $(srctree)/drivers/staging/android
+>>>>>>> msm8998/lineage-24.0
 
 msm_kgsl_core-y = \
 	kgsl.o \

@@ -8,7 +8,11 @@
  */
 
 #include <linux/vmalloc.h>
+<<<<<<< HEAD
 #include <linux/jhash.h>
+=======
+#include <linux/xxhash.h>
+>>>>>>> msm8998/lineage-24.0
 #include <linux/highmem.h>
 
 #include "zram_drv.h"
@@ -28,6 +32,7 @@ u64 zram_dedup_meta_size(struct zram *zram)
 	return (u64)atomic64_read(&zram->stats.meta_data_size);
 }
 
+<<<<<<< HEAD
 static u32 zram_dedup_checksum(unsigned char *mem)
 {
 	return jhash(mem, PAGE_SIZE, 0);
@@ -35,6 +40,15 @@ static u32 zram_dedup_checksum(unsigned char *mem)
 
 void zram_dedup_insert(struct zram *zram, struct zram_entry *new,
 				u32 checksum)
+=======
+static u64 zram_dedup_checksum(unsigned char *mem)
+{
+	return xxh64(mem, PAGE_SIZE, 0);
+}
+
+void zram_dedup_insert(struct zram *zram, struct zram_entry *new,
+				u64 checksum)
+>>>>>>> msm8998/lineage-24.0
 {
 	struct zram_hash *hash;
 	struct rb_root *rb_root;
@@ -91,7 +105,11 @@ static unsigned long zram_dedup_put(struct zram *zram,
 				struct zram_entry *entry)
 {
 	struct zram_hash *hash;
+<<<<<<< HEAD
 	u32 checksum;
+=======
+	u64 checksum;
+>>>>>>> msm8998/lineage-24.0
 	unsigned long val;
 
 	checksum = entry->checksum;
@@ -156,7 +174,11 @@ again:
 }
 
 static struct zram_entry *zram_dedup_get(struct zram *zram,
+<<<<<<< HEAD
 				unsigned char *mem, u32 checksum)
+=======
+				unsigned char *mem, u64 checksum)
+>>>>>>> msm8998/lineage-24.0
 {
 	struct zram_hash *hash;
 	struct zram_entry *entry;
@@ -182,7 +204,11 @@ static struct zram_entry *zram_dedup_get(struct zram *zram,
 }
 
 struct zram_entry *zram_dedup_find(struct zram *zram, struct page *page,
+<<<<<<< HEAD
 				u32 *checksum)
+=======
+				u64 *checksum)
+>>>>>>> msm8998/lineage-24.0
 {
 	void *mem;
 	struct zram_entry *entry;

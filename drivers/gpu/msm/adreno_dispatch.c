@@ -2506,8 +2506,12 @@ void adreno_dispatcher_schedule(struct kgsl_device *device)
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 
+<<<<<<< HEAD
 	if (!atomic_cmpxchg(&dispatcher->send_cmds, 0, 1))
 		wake_up(&dispatcher->cmd_waitq);
+=======
+	kthread_queue_work(&kgsl_driver.worker, &dispatcher->work);
+>>>>>>> msm8998/lineage-24.0
 }
 
 /**
@@ -2805,6 +2809,11 @@ int adreno_dispatcher_init(struct adreno_device *adreno_dev)
 	setup_timer(&dispatcher->fault_timer, adreno_dispatcher_fault_timer,
 		(unsigned long) adreno_dev);
 
+<<<<<<< HEAD
+=======
+	kthread_init_work(&dispatcher->work, adreno_dispatcher_work);
+
+>>>>>>> msm8998/lineage-24.0
 	init_completion(&dispatcher->idle_gate);
 	complete_all(&dispatcher->idle_gate);
 

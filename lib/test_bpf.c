@@ -4344,6 +4344,7 @@ static struct bpf_test tests[] = {
 		{ },
 		{ { 0, 1 } },
 	},
+<<<<<<< HEAD
 	{
 		"JMP_JGT_K: Unsigned jump: if (-1 > 1) return 1",
 		.u.insns_int = {
@@ -4358,6 +4359,8 @@ static struct bpf_test tests[] = {
 		{ },
 		{ { 0, 1 } },
 	},
+=======
+>>>>>>> msm8998/lineage-24.0
 	/* BPF_JMP | BPF_JLT | BPF_K */
 	{
 		"JMP_JLT_K: if (2 < 3) return 1",
@@ -4676,6 +4679,7 @@ static struct bpf_test tests[] = {
 		{ },
 		{ { 0, 1 } },
 	},
+<<<<<<< HEAD
 	{
 		"JMP_JGT_X: Unsigned jump: if (-1 > 1) return 1",
 		.u.insns_int = {
@@ -4691,6 +4695,8 @@ static struct bpf_test tests[] = {
 		{ },
 		{ { 0, 1 } },
 	},
+=======
+>>>>>>> msm8998/lineage-24.0
 	/* BPF_JMP | BPF_JLT | BPF_X */
 	{
 		"JMP_JLT_X: if (2 < 3) return 1",

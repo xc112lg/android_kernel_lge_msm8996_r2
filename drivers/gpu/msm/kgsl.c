@@ -5126,12 +5126,22 @@ static int __init kgsl_core_init(void)
 	kgsl_driver.mem_workqueue = alloc_workqueue("kgsl-mementry",
 		WQ_UNBOUND | WQ_MEM_RECLAIM, 0);
 
+<<<<<<< HEAD
 	if (IS_ERR_VALUE(kgsl_run_one_worker(&kgsl_driver.worker,
 			&kgsl_driver.worker_thread,
 			"kgsl_worker_thread")) ||
 		IS_ERR_VALUE(kgsl_run_one_worker(&kgsl_driver.low_prio_worker,
 			&kgsl_driver.low_prio_worker_thread,
 			"kgsl_low_prio_worker_thread")))
+=======
+	kthread_init_worker(&kgsl_driver.worker);
+
+	kgsl_driver.worker_thread = kthread_run(kthread_worker_fn,
+		&kgsl_driver.worker, "kgsl_worker_thread");
+
+	if (IS_ERR(kgsl_driver.worker_thread)) {
+		pr_err("unable to start kgsl thread\n");
+>>>>>>> msm8998/lineage-24.0
 		goto err;
 
 	sched_setscheduler(kgsl_driver.worker_thread, SCHED_FIFO, &param);

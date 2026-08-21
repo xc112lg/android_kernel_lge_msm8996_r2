@@ -3961,10 +3961,14 @@ enum nl80211_mfp {
 enum nl80211_wpa_versions {
 	NL80211_WPA_VERSION_1 = 1 << 0,
 	NL80211_WPA_VERSION_2 = 1 << 1,
+<<<<<<< HEAD
         NL80211_WPA_VERSION_3 = 1 << 2,
 #ifdef CONFIG_BRCM_WAPI
         NL80211_WAPI_VERSION_1 = 1 << 2,
 #endif
+=======
+	NL80211_WPA_VERSION_3 = 1 << 2,
+>>>>>>> msm8998/lineage-24.0
 };
 
 /**

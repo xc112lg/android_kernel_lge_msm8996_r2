@@ -2,6 +2,7 @@
 #include <linux/init.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+<<<<<<< HEAD
 #include <soc/qcom/lge/board_lge.h>
 #include <asm/setup.h>
 #include <linux/slab.h>
@@ -39,6 +40,39 @@ static int cmdline_proc_show(struct seq_file *m, void *v)
 #endif
 
 	seq_printf(m, "%s\n", updated_command_line);
+=======
+#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
+#include <asm/setup.h>
+#endif
+
+#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
+#define INITRAMFS_STR_FIND "skip_initramf"
+#define INITRAMFS_STR_REPLACE "want_initramf"
+#define INITRAMFS_STR_LEN (sizeof(INITRAMFS_STR_FIND) - 1)
+
+static char proc_command_line[COMMAND_LINE_SIZE];
+
+static void proc_command_line_init(void) {
+	char *offset_addr;
+
+	strcpy(proc_command_line, saved_command_line);
+
+	offset_addr = strstr(proc_command_line, INITRAMFS_STR_FIND);
+	if (!offset_addr)
+		return;
+
+	memcpy(offset_addr, INITRAMFS_STR_REPLACE, INITRAMFS_STR_LEN);
+}
+#endif
+
+static int cmdline_proc_show(struct seq_file *m, void *v)
+{
+#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
+	seq_printf(m, "%s\n", proc_command_line);
+#else
+	seq_printf(m, "%s\n", saved_command_line);
+#endif
+>>>>>>> msm8998/lineage-24.0
 	return 0;
 }
 
@@ -56,8 +90,14 @@ static const struct file_operations cmdline_proc_fops = {
 
 static int __init proc_cmdline_init(void)
 {
+<<<<<<< HEAD
 	// copy it only once
 	strcpy(updated_command_line, saved_command_line);
+=======
+#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
+	proc_command_line_init();
+#endif
+>>>>>>> msm8998/lineage-24.0
 
 	proc_create("cmdline", 0, NULL, &cmdline_proc_fops);
 	return 0;

@@ -10,9 +10,15 @@ u64 zram_dedup_dup_size(struct zram *zram);
 u64 zram_dedup_meta_size(struct zram *zram);
 
 void zram_dedup_insert(struct zram *zram, struct zram_entry *new,
+<<<<<<< HEAD
 				u32 checksum);
 struct zram_entry *zram_dedup_find(struct zram *zram, struct page *page,
 				u32 *checksum);
+=======
+				u64 checksum);
+struct zram_entry *zram_dedup_find(struct zram *zram, struct page *page,
+				u64 *checksum);
+>>>>>>> msm8998/lineage-24.0
 
 void zram_dedup_init_entry(struct zram *zram, struct zram_entry *entry,
 				unsigned long handle, unsigned int len);
@@ -26,9 +32,15 @@ static inline u64 zram_dedup_dup_size(struct zram *zram) { return 0; }
 static inline u64 zram_dedup_meta_size(struct zram *zram) { return 0; }
 
 static inline void zram_dedup_insert(struct zram *zram, struct zram_entry *new,
+<<<<<<< HEAD
 			u32 checksum) { }
 static inline struct zram_entry *zram_dedup_find(struct zram *zram,
 			struct page *page, u32 *checksum) { return NULL; }
+=======
+			u64 checksum) { }
+static inline struct zram_entry *zram_dedup_find(struct zram *zram,
+			struct page *page, u64 *checksum) { return NULL; }
+>>>>>>> msm8998/lineage-24.0
 
 static inline void zram_dedup_init_entry(struct zram *zram,
 			struct zram_entry *entry, unsigned long handle,

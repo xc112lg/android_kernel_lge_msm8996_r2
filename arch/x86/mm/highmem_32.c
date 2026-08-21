@@ -1,5 +1,9 @@
 #include <linux/highmem.h>
+<<<<<<< HEAD
 #include <linux/swap.h> /* for totalram_pages */
+=======
+#include <linux/module.h>
+>>>>>>> msm8998/lineage-24.0
 #include <linux/swap.h> /* for totalram_pages() */
 #include <linux/bootmem.h>
 

@@ -92,6 +92,11 @@ _kgsl_pool_add_page(struct kgsl_page_pool *pool, struct page *p)
 		__free_pages(p, pool->pool_order);
 		return;
 	}
+<<<<<<< HEAD
+=======
+
+	_kgsl_pool_zero_page(p, pool->pool_order);
+>>>>>>> msm8998/lineage-24.0
 
 	_kgsl_pool_zero_page(p, pool->pool_order);
 

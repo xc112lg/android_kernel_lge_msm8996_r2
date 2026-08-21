@@ -334,6 +334,11 @@
 325	common	mlock2			sys_mlock2
 424	common	pidfd_send_signal	sys_pidfd_send_signal
 434	common	pidfd_open		sys_pidfd_open
+<<<<<<< HEAD
+=======
+436	common	close_range		sys_close_range
+441	common	epoll_pwait2		sys_epoll_pwait2
+>>>>>>> msm8998/lineage-24.0
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact

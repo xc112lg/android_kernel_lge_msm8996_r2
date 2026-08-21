@@ -535,9 +535,33 @@ static long ion_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		handle = ion_handle_get_by_id(client, data.handle.handle);
 		if (IS_ERR(handle))
 			return PTR_ERR(handle);
+<<<<<<< HEAD
 
 		ion_handle_put(handle, 2);
 		return 0;
+=======
+		data.allocation.handle = handle->id;
+
+		cleanup_handle = handle;
+		pass_to_user(handle);
+		break;
+	}
+	case ION_IOC_FREE:
+	{
+		struct ion_handle *handle;
+
+		mutex_lock(&client->lock);
+		handle = ion_handle_get_by_id_nolock(client, data.handle.handle);
+		if (IS_ERR(handle)) {
+			mutex_unlock(&client->lock);
+			return PTR_ERR(handle);
+		}
+		user_ion_free_nolock(client, handle);
+		ion_handle_put_nolock(handle);
+		mutex_unlock(&client->lock);
+		break;
+	}
+>>>>>>> msm8998/lineage-24.0
 	case ION_IOC_SHARE:
 	case ION_IOC_MAP:
 		handle = ion_handle_get_by_id(client, data.handle.handle);
@@ -566,7 +590,16 @@ static long ion_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			}
 			ion_handle_rb_add(client, handle);
 		} else {
+<<<<<<< HEAD
 			ion_buffer_put(buffer);
+=======
+			data.handle.handle = handle->id;
+			handle = pass_to_user(handle);
+			if (IS_ERR(handle)) {
+				ret = PTR_ERR(handle);
+				data.handle.handle = 0;
+			}
+>>>>>>> msm8998/lineage-24.0
 		}
 
 		output = &handle->id;

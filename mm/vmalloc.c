@@ -601,7 +601,10 @@ augment_tree_propagate_check(struct rb_node *n)
  * its subtree_max_size is updated only, and set to 1. If we shrink
  * the node 8 to 6, then its subtree_max_size is set to 6 and parent
  * node becomes 4--6.
+<<<<<<< HEAD
  * vstart and vend.
+=======
+>>>>>>> msm8998/lineage-24.0
  */
 static __always_inline void
 augment_tree_propagate_from(struct vmap_area *va)
@@ -789,7 +792,11 @@ find_vmap_lowest_match(unsigned long size,
 	/* Adjust the search size for alignment overhead. */
 	length = size + align - 1;
 
+<<<<<<< HEAD
 		while (node) {
+=======
+	while (node) {
+>>>>>>> msm8998/lineage-24.0
 		va = rb_entry(node, struct vmap_area, rb_node);
 
 		if (get_subtree_max_size(node->rb_left) >= length &&
@@ -1066,6 +1073,10 @@ retry:
 	va->va_end = addr + size;
 	va->flags = 0;
 	insert_vmap_area(va, &vmap_area_root, &vmap_area_list);
+<<<<<<< HEAD
+=======
+
+>>>>>>> msm8998/lineage-24.0
 	spin_unlock(&vmap_area_lock);
 
 	BUG_ON(va->va_start & (align-1));
@@ -1718,7 +1729,10 @@ void *vm_map_ram(struct page **pages, unsigned int count, int node, pgprot_t pro
 EXPORT_SYMBOL(vm_map_ram);
 
 static struct vm_struct *vmlist __initdata;
+<<<<<<< HEAD
 
+=======
+>>>>>>> msm8998/lineage-24.0
 /**
  * vm_area_add_early - add vmap area early during boot
  * @vm: vm_struct to add
@@ -1839,6 +1853,10 @@ void __init vmalloc_init(void)
 		va = kmem_cache_zalloc(vmap_area_cachep, GFP_NOWAIT);
 		if (WARN_ON_ONCE(!va))
 			continue;
+<<<<<<< HEAD
+=======
+
+>>>>>>> msm8998/lineage-24.0
 		va->flags = VM_VM_AREA;
 		va->va_start = (unsigned long)tmp->addr;
 		va->va_end = va->va_start + tmp->size;
@@ -2494,6 +2512,10 @@ static inline void *__vmalloc_node_flags(unsigned long size,
 					node, __builtin_return_address(0));
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> msm8998/lineage-24.0
 void *__vmalloc_node_flags_caller(unsigned long size, int node, gfp_t flags,
 				  void *caller)
 {
@@ -2586,6 +2608,29 @@ void *vzalloc_node(unsigned long size, int node)
 }
 EXPORT_SYMBOL(vzalloc_node);
 
+<<<<<<< HEAD
+=======
+/**
+ * vmalloc_user_node_flags - allocate memory for userspace on a specific node
+ * @size: allocation size
+ * @node: numa node
+ * @flags: flags for the page level allocator
+ *
+ * The resulting memory area is zeroed so it can be mapped to userspace
+ * without leaking data.
+ *
+ * Return: pointer to the allocated memory or %NULL on error
+ */
+void *vmalloc_user_node_flags(unsigned long size, int node, gfp_t flags)
+{
+	return __vmalloc_node_range(size, SHMLBA,  VMALLOC_START, VMALLOC_END,
+				    flags | __GFP_ZERO, PAGE_KERNEL,
+				    VM_USERMAP, node,
+				    __builtin_return_address(0));
+}
+EXPORT_SYMBOL(vmalloc_user_node_flags);
+
+>>>>>>> msm8998/lineage-24.0
 /**
  *	vmalloc_exec  -  allocate virtually contiguous, executable memory
  *	@size:		allocation size
@@ -3119,7 +3164,11 @@ pvm_determine_end_from_reverse(struct vmap_area **va, unsigned long align)
  * to gigabytes.  To avoid interacting with regular vmallocs, these
  * areas are allocated from top.
  *
+<<<<<<< HEAD
  * * Despite its complicated look, this allocator is rather simple. It
+=======
+ * Despite its complicated look, this allocator is rather simple. It
+>>>>>>> msm8998/lineage-24.0
  * does everything top-down and scans free blocks from the end looking
  * for matching base. While scanning, if any of the areas do not fit the
  * base address is pulled down to fit the area. Scanning is repeated till
@@ -3204,7 +3253,11 @@ retry:
 			goto overflow;
 
 		/*
+<<<<<<< HEAD
 		 * * If this VA does not fit, move base downwards and recheck.
+=======
+		 * If this VA does not fit, move base downwards and recheck.
+>>>>>>> msm8998/lineage-24.0
 		 */
 		if (base + start < va->va_start || base + end > va->va_end) {
 			va = node_to_va(rb_prev(&va->rb_node));
@@ -3220,6 +3273,7 @@ retry:
 		area = (area + nr_vms - 1) % nr_vms;
 		if (area == term_area)
 			break;
+
 		start = offsets[area];
 		end = start + sizes[area];
 		va = pvm_find_va_enclose_addr(base + end);
@@ -3295,6 +3349,10 @@ err_free:
 	for (area = 0; area < nr_vms; area++) {
 		if (vas[area])
 			kmem_cache_free(vmap_area_cachep, vas[area]);
+<<<<<<< HEAD
+=======
+
+>>>>>>> msm8998/lineage-24.0
 		kfree(vms[area]);
 	}
 err_free2:

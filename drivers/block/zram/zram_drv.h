@@ -32,11 +32,17 @@
 
 
 /*
+<<<<<<< HEAD
  * ZRAM is mainly used for memory efficiency so we want to keep memory
  * footprint small and thus squeeze size and zram pageflags into a flags
  * member. The lower ZRAM_FLAG_SHIFT bits is for object size (excluding
  * header), which cannot be larger than PAGE_SIZE (requiring PAGE_SHIFT
  * bits), the higher bits are for zram_pageflags.
+=======
+ * The lower ZRAM_FLAG_SHIFT bits of table.flags is for
+ * object size (excluding header), the higher bits is for
+ * zram_pageflags.
+>>>>>>> msm8998/lineage-24.0
  *
  * We use BUILD_BUG_ON() to make sure that zram pageflags don't overflow.
  */
@@ -60,7 +66,11 @@ enum zram_pageflags {
 struct zram_entry {
 	struct rb_node rb_node;
 	u32 len;
+<<<<<<< HEAD
 	u32 checksum;
+=======
+	u64 checksum;
+>>>>>>> msm8998/lineage-24.0
 	unsigned long refcount;
 	unsigned long handle;
 };
@@ -134,8 +144,14 @@ struct zram {
 	 */
 	bool claim; /* Protected by bdev->bd_mutex */
 	bool use_dedup;
+<<<<<<< HEAD
 	struct file *backing_dev;
 #ifdef CONFIG_ZRAM_WRITEBACK
+=======
+
+#ifdef CONFIG_ZRAM_WRITEBACK
+	struct file *backing_dev;
+>>>>>>> msm8998/lineage-24.0
 	spinlock_t wb_limit_lock;
 	bool wb_limit_enable;
 	u64 bd_wb_limit;

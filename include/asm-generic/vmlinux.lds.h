@@ -68,12 +68,21 @@
  * RODATA_MAIN is not used because existing code already defines .rodata.x
  * sections to be brought in with rodata.
  */
+<<<<<<< HEAD
 #ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 #define TEXT_MAIN .text .text.[0-9a-zA-Z_]*
 #define DATA_MAIN .data .data.[0-9a-zA-Z_]* .data..compoundliteral* .data..L_MergedGlobals*
 #define SDATA_MAIN .sdata .sdata.[0-9a-zA-Z_]*
 #define RODATA_MAIN .rodata .rodata.[0-9a-zA-Z_]*
 #define BSS_MAIN .bss .bss.[0-9a-zA-Z_]* .bss..compoundliteral* .bss..L_MergedGlobals*
+=======
+#if defined(CONFIG_LD_DEAD_CODE_DATA_ELIMINATION) || defined(CONFIG_LTO_CLANG)
+#define TEXT_MAIN .text .text.[0-9a-zA-Z_]*
+#define DATA_MAIN .data .data.[0-9a-zA-Z_]*
+#define SDATA_MAIN .sdata .sdata.[0-9a-zA-Z_]*
+#define RODATA_MAIN .rodata .rodata.[0-9a-zA-Z_]*
+#define BSS_MAIN .bss .bss.[0-9a-zA-Z_]*
+>>>>>>> msm8998/lineage-24.0
 #define SBSS_MAIN .sbss .sbss.[0-9a-zA-Z_]*
 #else
 #define TEXT_MAIN .text
@@ -145,6 +154,15 @@
 #define KPROBE_BLACKLIST()
 #endif
 
+#ifdef CONFIG_FUNCTION_ERROR_INJECTION
+#define ERROR_INJECT_WHITELIST()	STRUCT_ALIGN();			 \
+			VMLINUX_SYMBOL(__start_error_injection_whitelist) = .;\
+			KEEP(*(_error_injection_whitelist))		 \
+			VMLINUX_SYMBOL(__stop_error_injection_whitelist) = .;
+#else
+#define ERROR_INJECT_WHITELIST()
+#endif
+
 #ifdef CONFIG_EVENT_TRACING
 #define FTRACE_EVENTS()	. = ALIGN(8);					\
 			VMLINUX_SYMBOL(__start_ftrace_events) = .;	\
@@ -176,6 +194,15 @@
 			 VMLINUX_SYMBOL(__stop_syscalls_metadata) = .;
 #else
 #define TRACE_SYSCALLS()
+#endif
+
+#ifdef CONFIG_BPF_EVENTS
+#define BPF_RAW_TP() STRUCT_ALIGN();                                   \
+ 			VMLINUX_SYMBOL(__start__bpf_raw_tp) = .;       \
+ 			KEEP(*(__bpf_raw_tp_map))                      \
+ 			VMLINUX_SYMBOL(__stop__bpf_raw_tp) = .;
+#else
+#define BPF_RAW_TP()
 #endif
 
 #ifdef CONFIG_SERIAL_EARLYCON
@@ -245,6 +272,7 @@
 	LIKELY_PROFILE()		       				\
 	BRANCH_PROFILE()						\
 	TRACE_PRINTKS()							\
+	BPF_RAW_TP()                                                    \
 	TRACEPOINT_STR()
 
 /*
@@ -272,7 +300,7 @@
 
 #define INIT_TASK_DATA(align)						\
 	. = ALIGN(align);						\
-	*(.data..init_task)
+	KEEP(*(.data..init_task))
 
 /*
  * Allow architectures to handle ro_after_init data on their
@@ -436,10 +464,12 @@
 		VMLINUX_SYMBOL(__start___modver) = .;			\
 		KEEP(*(__modver))					\
 		VMLINUX_SYMBOL(__stop___modver) = .;			\
-		. = ALIGN((align));					\
-		VMLINUX_SYMBOL(__end_rodata) = .;			\
 	}								\
-	. = ALIGN((align));
+									\
+	BTF								\
+									\
+	. = ALIGN((align));						\
+	VMLINUX_SYMBOL(__end_rodata) = .;
 
 /* RODATA & RO_DATA provided for backward compatibility.
  * All archs are supposed to use RO_DATA() */
@@ -464,8 +494,14 @@
 #define TEXT_TEXT							\
 		ALIGN_FUNCTION();					\
 		*(.text.hot .text.hot.*)				\
+<<<<<<< HEAD
 		*(TEXT_MAIN .text.fixup)				\
 		*(.text.unlikely .text.unlikely.*)			\
+=======
+		*(TEXT_MAIN .text.fixup)					\
+		*(.text.unlikely .text.unlikely)			\
+		*(.text..ftrace)					\
+>>>>>>> msm8998/lineage-24.0
 		*(.text.unknown .text.unknown.*)			\
 		*(.ref.text)						\
 		*(.text.asan.* .text.tsan.*)				\
@@ -533,6 +569,24 @@
 	}
 
 /*
+ * .BTF
+ */
+#ifdef CONFIG_DEBUG_INFO_BTF
+#define BTF						                \
+	.BTF : AT(ADDR(.BTF) - LOAD_OFFSET) {		                \
+		VMLINUX_SYMBOL(__start_BTF) = .;			\
+		*(.BTF)							\
+		VMLINUX_SYMBOL(__stop_BTF) = .;			        \
+	}								\
+	. = ALIGN(4);							\
+	.BTF_ids : AT(ADDR(.BTF_ids) - LOAD_OFFSET) {			\
+		*(.BTF_ids)						\
+	}
+#else
+#define BTF
+#endif
+
+/*
  * Init task
  */
 #define INIT_TASK_DATA_SECTION(align)					\
@@ -563,6 +617,7 @@
 	FTRACE_EVENTS()							\
 	TRACE_SYSCALLS()						\
 	KPROBE_BLACKLIST()						\
+	ERROR_INJECT_WHITELIST()					\
 	MEM_DISCARD(init.rodata)					\
 	CLK_OF_TABLES()							\
 	RESERVEDMEM_OF_TABLES()						\

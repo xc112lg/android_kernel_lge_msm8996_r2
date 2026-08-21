@@ -1,5 +1,9 @@
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+<<<<<<< HEAD
  * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+=======
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
+>>>>>>> msm8998/lineage-24.0
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
