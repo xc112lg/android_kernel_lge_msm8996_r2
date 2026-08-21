@@ -349,7 +349,7 @@ else
   ABORT "Invalid device '${DEVICE}' specified! Make sure to use upper-case."
 fi
 
-SWAN2000_DEFCONFIG=vendor/lge/swan2000.config
+
 
 # check for stuff
 [ -f "$RDIR/arch/$ARCH/configs/${COMMON_DEFCONFIG}" ] \
