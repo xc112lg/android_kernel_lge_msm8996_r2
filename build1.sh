@@ -122,7 +122,7 @@ COLOR_P="\033[1;35m"
 
 ABORT() {
 	echo -e $COLOR_R"Error: $*"
-	exit 1
+	#exit 1
 }
 
 # downloads & extracts a toolchain archive if it isn't already present
@@ -349,7 +349,7 @@ else
   ABORT "Invalid device '${DEVICE}' specified! Make sure to use upper-case."
 fi
 
-
+SWAN2000_DEFCONFIG=vendor/lge/swan2000.config
 
 # check for stuff
 [ -f "$RDIR/arch/$ARCH/configs/${COMMON_DEFCONFIG}" ] \
@@ -388,10 +388,10 @@ SETUP_BUILD() {
 	echo "$DEVICE" > $BDIR/DEVICE \
 		|| echo -e $COLOR_R"Failed to reflect device!"
     if [ $SINGLEBUILD = "yes" ]; then
-	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CC="$MAKE_CC" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG  \
+	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CC="$MAKE_CC" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG \
 		    || ABORT "Failed to set up the kernel build."
     else # build_all will send make output to a file
-        make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CC="$MAKE_CC" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG  &> zBuild_all.log \
+        make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CC="$MAKE_CC" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG &> zBuild_all.log \
 		    || ABORT "Failed to set up the kernel build."
     fi
 }
@@ -400,8 +400,13 @@ BUILD_KERNEL() {
 	    echo -e $COLOR_G"Compiling kernel for ${DEVICE}..."$COLOR_N
 	    TIMESTAMP1=$(date +%s)
     if [ $SINGLEBUILD = "yes" ]; then
- ABORT "Compilation aborted."
-
+        while ! make -C "$RDIR" O=$BDIR CC="$MAKE_CC" -j"$THREADS"; do
+		    read -rp "Build failed. Retry? " do_retry
+		    case $do_retry in
+			    Y|y) continue ;;
+			    *) ABORT "Compilation aborted." ;;
+		    esac
+	    done
     else # build_all will send compile logs to a file
 	    while ! make -C "$RDIR" O=$BDIR CC="$MAKE_CC" -j"$THREADS" &> zBuild_all.log; do
 		    read -rp "Build failed. Retry? " do_retry
@@ -454,9 +459,24 @@ fi
 
 # ask before cleaning if device
 # is the same as previous build
-
+if [ $SINGLEBUILD = "yes" ]; then
+    if [ "$ASK_CLEAN" = "yes" ]; then
+      while true; do
+        echo -e $COLOR_Y
+        read -p "Same device as the last build. Do you wish to clean the build directory?" yn
+        echo -e $COLOR_N
+        case $yn in
+          [Yy]* ) CLEAN_BUILD && break ;;
+          [Nn]* ) break ;;
+          * ) echo -e $COLOR_R"Please answer 'y' or 'n'"$COLOR_N ;;
+        esac
+      done
+    else
     CLEAN_BUILD
-
+    fi
+else # Always clean build folder for next build on build_all
+    CLEAN_BUILD
+fi
 SETUP_BUILD
 BUILD_KERNEL
 INSTALL_MODULES
