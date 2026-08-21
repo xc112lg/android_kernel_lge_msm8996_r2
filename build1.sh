@@ -122,7 +122,7 @@ COLOR_P="\033[1;35m"
 
 ABORT() {
 	echo -e $COLOR_R"Error: $*"
-	exit 1
+	#exit 1
 }
 
 # downloads & extracts a toolchain archive if it isn't already present
