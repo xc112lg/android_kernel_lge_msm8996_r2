@@ -80,9 +80,6 @@ struct adreno_dispatcher_drawqueue {
  * @disp_preempt_fair_sched: If set then dispatcher will try to be fair to
  * starving RB's by scheduling them in and enforcing a minimum time slice
  * for every RB that is scheduled to run on the device
- * @thread: Kthread for the command dispatcher
- * @cmd_waitq: Waitqueue for the command dispatcher
- * @send_cmds: Atomic boolean indicating that commands should be dispatched
  * @work: kthread_work item queued on kgsl_driver.worker to run the dispatcher
  */
 struct adreno_dispatcher {
@@ -97,9 +94,6 @@ struct adreno_dispatcher {
 	struct kobject kobj;
 	struct completion idle_gate;
 	unsigned int disp_preempt_fair_sched;
-	struct task_struct *thread;
-	wait_queue_head_t cmd_waitq;
-	atomic_t send_cmds;
 	struct kthread_work work;
 };
 

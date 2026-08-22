@@ -2423,9 +2423,12 @@ static void _dispatcher_power_down(struct adreno_device *adreno_dev)
 	mutex_unlock(&device->mutex);
 }
 
-static void adreno_dispatcher_work(struct adreno_device *adreno_dev)
+static void adreno_dispatcher_work(struct kthread_work *work)
 {
-	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
+	struct adreno_dispatcher *dispatcher =
+		container_of(work, struct adreno_dispatcher, work);
+	struct adreno_device *adreno_dev =
+		container_of(dispatcher, struct adreno_device, dispatcher);
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 	int count = 0;
@@ -2473,32 +2476,6 @@ static void adreno_dispatcher_work(struct adreno_device *adreno_dev)
 		_dispatcher_power_down(adreno_dev);
 
 	mutex_unlock(&dispatcher->mutex);
-}
-
-static int adreno_dispatcher_thread(void *data)
-{
-	static const struct sched_param sched_rt_prio = {
-		.sched_priority = 16
-	};
-	struct adreno_device *adreno_dev = data;
-	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
-
-	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_rt_prio);
-
-	while (1) {
-		bool should_stop;
-
-		wait_event(dispatcher->cmd_waitq,
-			  (should_stop = kthread_should_stop()) ||
-			   atomic_cmpxchg(&dispatcher->send_cmds, 1, 0));
-
-		if (should_stop)
-			break;
-
-		adreno_dispatcher_work(adreno_dev);
-	}
-
-	return 0;
 }
 
 void adreno_dispatcher_schedule(struct kgsl_device *device)
@@ -2625,8 +2602,6 @@ void adreno_dispatcher_close(struct adreno_device *adreno_dev)
 	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
 	int i;
 	struct adreno_ringbuffer *rb;
-
-	kthread_stop(dispatcher->thread);
 
 	mutex_lock(&dispatcher->mutex);
 	del_timer_sync(&dispatcher->timer);
@@ -2811,13 +2786,6 @@ int adreno_dispatcher_init(struct adreno_device *adreno_dev)
 
 	plist_head_init(&dispatcher->pending);
 	spin_lock_init(&dispatcher->plist_lock);
-
-	init_waitqueue_head(&dispatcher->cmd_waitq);
-	dispatcher->send_cmds = (atomic_t)ATOMIC_INIT(0);
-	dispatcher->thread = kthread_run(adreno_dispatcher_thread, adreno_dev,
-					 "adreno_dispatch");
-	if (IS_ERR(dispatcher->thread))
-		return PTR_ERR(dispatcher->thread);
 
 	ret = kobject_init_and_add(&dispatcher->kobj, &ktype_dispatcher,
 		&device->dev->kobj, "dispatch");
