@@ -122,7 +122,7 @@ COLOR_P="\033[1;35m"
 
 ABORT() {
 	echo -e $COLOR_R"Error: $*"
-	exit 1
+	#exit 1
 }
 
 # downloads & extracts a toolchain archive if it isn't already present
@@ -213,7 +213,7 @@ INSTALL_CCACHE() {
 		if [ "$(id -u)" = "0" ]; then
 			apt-get update; apt-get install -y ccache
 		else
-			sudo apt-get update; sudo apt-get install -y ccache
+			sudo apt-get update; sudo apt-get install -y ccache bc kmod
 		fi
 	elif command -v dnf >/dev/null 2>&1; then
 		if [ "$(id -u)" = "0" ]; then
@@ -459,24 +459,9 @@ fi
 
 # ask before cleaning if device
 # is the same as previous build
-if [ $SINGLEBUILD = "yes" ]; then
-    if [ "$ASK_CLEAN" = "yes" ]; then
-      while true; do
-        echo -e $COLOR_Y
-        read -p "Same device as the last build. Do you wish to clean the build directory?" yn
-        echo -e $COLOR_N
-        case $yn in
-          [Yy]* ) CLEAN_BUILD && break ;;
-          [Nn]* ) break ;;
-          * ) echo -e $COLOR_R"Please answer 'y' or 'n'"$COLOR_N ;;
-        esac
-      done
-    else
+
     CLEAN_BUILD
-    fi
-else # Always clean build folder for next build on build_all
-    CLEAN_BUILD
-fi
+
 SETUP_BUILD
 BUILD_KERNEL
 INSTALL_MODULES

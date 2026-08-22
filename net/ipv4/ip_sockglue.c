@@ -46,6 +46,8 @@
 #include <linux/errqueue.h>
 #include <asm/uaccess.h>
 
+#include <linux/bpfilter.h>
+
 /*
  *	SOL_IP control messages.
  */
@@ -221,11 +223,12 @@ void ip_cmsg_recv_offset(struct msghdr *msg, struct sk_buff *skb,
 }
 EXPORT_SYMBOL(ip_cmsg_recv_offset);
 
-int ip_cmsg_send(struct net *net, struct msghdr *msg, struct ipcm_cookie *ipc,
+int ip_cmsg_send(struct sock *sk, struct msghdr *msg, struct ipcm_cookie *ipc,
 		 bool allow_ipv6)
 {
 	int err, val;
 	struct cmsghdr *cmsg;
+	struct net *net = sock_net(sk);
 
 	for_each_cmsghdr(cmsg, msg) {
 		if (!CMSG_OK(msg, cmsg))
@@ -247,6 +250,13 @@ int ip_cmsg_send(struct net *net, struct msghdr *msg, struct ipcm_cookie *ipc,
 			continue;
 		}
 #endif
+		if (cmsg->cmsg_level == SOL_SOCKET) {
+			err = __sock_cmsg_send(sk, msg, cmsg, &ipc->sockc);
+			if (err)
+				return err;
+			continue;
+		}
+
 		if (cmsg->cmsg_level != SOL_IP)
 			continue;
 		switch (cmsg->cmsg_type) {
@@ -639,7 +649,7 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 		if (err)
 			break;
 		old = rcu_dereference_protected(inet->inet_opt,
-						sock_owned_by_user(sk));
+						lockdep_sock_is_held(sk));
 		if (inet->is_icsk) {
 			struct inet_connection_sock *icsk = inet_csk(sk);
 #if IS_ENABLED(CONFIG_IPV6)
@@ -1194,7 +1204,18 @@ void ipv4_pktinfo_prepare(const struct sock *sk, struct sk_buff *skb)
 		       ipv6_sk_rxinfo(sk);
 
 	if (prepare && skb_rtable(skb)) {
-		pktinfo->ipi_ifindex = inet_iif(skb);
+		/* skb->cb is overloaded: prior to this point it is IP{6}CB
+		 * which has interface index (iif) as the first member of the
+		 * underlying inet{6}_skb_parm struct. This code then overlays
+		 * PKTINFO_SKB_CB and in_pktinfo also has iif as the first
+		 * element so the iif is picked up from the prior IPCB. If iif
+		 * is the loopback interface, then return the sending interface
+		 * (e.g., process binds socket to eth0 for Tx which is
+		 * redirected to loopback in the rtable/dst).
+		 */
+		if (pktinfo->ipi_ifindex == LOOPBACK_IFINDEX)
+			pktinfo->ipi_ifindex = inet_iif(skb);
+
 		pktinfo->ipi_spec_dst.s_addr = fib_compute_spec_dst(skb);
 	} else {
 		pktinfo->ipi_ifindex = 0;
@@ -1219,6 +1240,11 @@ int ip_setsockopt(struct sock *sk, int level,
 		return -ENOPROTOOPT;
 
 	err = do_ip_setsockopt(sk, level, optname, optval, optlen);
+#ifdef CONFIG_BPFILTER
+	if (optname >= BPFILTER_IPT_SO_SET_REPLACE &&
+	    optname < BPFILTER_IPT_SET_MAX)
+		err = bpfilter_ip_set_sockopt(sk, optname, optval, optlen);
+#endif
 #ifdef CONFIG_NETFILTER
 	/* we need to exclude all possible ENOPROTOOPTs except default case */
 	if (err == -ENOPROTOOPT && optname != IP_HDRINCL &&
@@ -1305,7 +1331,7 @@ static int do_ip_getsockopt(struct sock *sk, int level, int optname,
 		struct ip_options_rcu *inet_opt;
 
 		inet_opt = rcu_dereference_protected(inet->inet_opt,
-						     sock_owned_by_user(sk));
+						     lockdep_sock_is_held(sk));
 		opt->optlen = 0;
 		if (inet_opt)
 			memcpy(optbuf, &inet_opt->opt,
@@ -1521,6 +1547,11 @@ int ip_getsockopt(struct sock *sk, int level,
 	int err;
 
 	err = do_ip_getsockopt(sk, level, optname, optval, optlen, 0);
+#ifdef CONFIG_BPFILTER
+	if (optname >= BPFILTER_IPT_SO_GET_INFO &&
+	    optname < BPFILTER_IPT_GET_MAX)
+		err = bpfilter_ip_get_sockopt(sk, optname, optval, optlen);
+#endif
 #ifdef CONFIG_NETFILTER
 	/* we need to exclude all possible ENOPROTOOPTs except default case */
 	if (err == -ENOPROTOOPT && optname != IP_PKTOPTIONS &&
@@ -1553,6 +1584,11 @@ int compat_ip_getsockopt(struct sock *sk, int level, int optname,
 	err = do_ip_getsockopt(sk, level, optname, optval, optlen,
 		MSG_CMSG_COMPAT);
 
+#ifdef CONFIG_BPFILTER
+	if (optname >= BPFILTER_IPT_SO_GET_INFO &&
+	    optname < BPFILTER_IPT_GET_MAX)
+		err = bpfilter_ip_get_sockopt(sk, optname, optval, optlen);
+#endif
 #ifdef CONFIG_NETFILTER
 	/* we need to exclude all possible ENOPROTOOPTs except default case */
 	if (err == -ENOPROTOOPT && optname != IP_PKTOPTIONS &&

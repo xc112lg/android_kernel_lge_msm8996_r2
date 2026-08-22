@@ -1,4 +1,4 @@
-ccflags-y += -I$(src) -Idrivers/staging/android
+ccflags-y += -I$(src) -I $(srctree)/drivers/staging/android
 
 obj-$(CONFIG_LGE_DISPLAY_COMMON) += lge/
 obj-$(CONFIG_FB_MSM_MDSS_MHL3) += mhl3/
