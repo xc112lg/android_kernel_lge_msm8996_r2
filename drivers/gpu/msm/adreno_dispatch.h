@@ -83,6 +83,7 @@ struct adreno_dispatcher_drawqueue {
  * @thread: Kthread for the command dispatcher
  * @cmd_waitq: Waitqueue for the command dispatcher
  * @send_cmds: Atomic boolean indicating that commands should be dispatched
+ * @work: kthread_work item queued on kgsl_driver.worker to run the dispatcher
  */
 struct adreno_dispatcher {
 	struct mutex mutex;
@@ -99,6 +100,7 @@ struct adreno_dispatcher {
 	struct task_struct *thread;
 	wait_queue_head_t cmd_waitq;
 	atomic_t send_cmds;
+	struct kthread_work work;
 };
 
 enum adreno_dispatcher_flags {
