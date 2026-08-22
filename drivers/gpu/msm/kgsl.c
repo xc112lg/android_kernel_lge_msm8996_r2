@@ -20,6 +20,7 @@
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
 #include <linux/interrupt.h>
+#include <linux/kthread.h>
 #include <linux/workqueue.h>
 #include <linux/dma-buf.h>
 #include <linux/pm_runtime.h>
@@ -5047,7 +5048,7 @@ static void kgsl_core_exit(void)
 static long kgsl_run_one_worker(struct kthread_worker *worker,
 		struct task_struct **thread, const char *name)
 {
-	init_kthread_worker(worker);
+	kthread_init_worker(worker);
 	*thread = kthread_run(kthread_worker_fn, worker, name);
 	if (IS_ERR(*thread)) {
 		pr_err("unable to start %s\n", name);
@@ -5134,6 +5135,7 @@ static int __init kgsl_core_init(void)
 	if (IS_ERR(kgsl_driver.worker_thread)) {
 		pr_err("unable to start kgsl thread\n");
 		goto err;
+	}
 
 	sched_setscheduler(kgsl_driver.worker_thread, SCHED_FIFO, &param);
 	/* kgsl_driver.low_prio_worker_thread should not be SCHED_FIFO */
