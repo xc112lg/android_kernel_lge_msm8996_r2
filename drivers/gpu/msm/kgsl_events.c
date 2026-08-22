@@ -390,6 +390,18 @@ void kgsl_add_event_group(struct kgsl_event_group *group,
 }
 EXPORT_SYMBOL(kgsl_add_event_group);
 
+const char *prio_to_string(enum kgsl_priority prio)
+{
+	switch (prio) {
+	case KGSL_EVENT_REGULAR_PRIORITY:
+		return "regular";
+	case KGSL_EVENT_LOW_PRIORITY:
+		return "low";
+	default:
+		return "unknown";
+	}
+}
+
 static void events_debugfs_print_group(struct seq_file *s,
 		struct kgsl_event_group *group)
 {
