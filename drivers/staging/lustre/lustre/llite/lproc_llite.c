@@ -411,7 +411,7 @@ static ssize_t ll_max_cached_mb_seq_write(struct file *file,
 	if (rc)
 		return rc;
 
-	if (pages_number < 0 || pages_number > totalram_pages) {
+	if (pages_number < 0 || pages_number > totalram_pages()) {
 		CERROR("%s: can't set max cache more than %lu MB\n",
 		       ll_get_fsname(sb, NULL, 0),
 		       totalram_pages() >> (20 - PAGE_CACHE_SHIFT));

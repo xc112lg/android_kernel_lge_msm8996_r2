@@ -19,6 +19,7 @@
 #include <linux/jump_label.h>
 #include <linux/export.h>
 #include <linux/rbtree_latch.h>
+#include <linux/error-injection.h>
 
 #include <linux/percpu.h>
 #include <asm/module.h>
@@ -442,6 +443,10 @@ struct module {
 	unsigned int num_tracepoints;
 	struct tracepoint * const *tracepoints_ptrs;
 #endif
+#ifdef CONFIG_BPF_EVENTS
+	unsigned int num_bpf_raw_events;
+	struct bpf_raw_event_map *bpf_raw_events;
+#endif
 #ifdef HAVE_JUMP_LABEL
 	struct jump_entry *jump_entries;
 	unsigned int num_jump_entries;
@@ -481,6 +486,11 @@ struct module {
 	/* Constructor functions. */
 	ctor_fn_t *ctors;
 	unsigned int num_ctors;
+#endif
+
+#ifdef CONFIG_FUNCTION_ERROR_INJECTION
+	struct error_injection_entry *ei_funcs;
+	unsigned int num_ei_funcs;
 #endif
 } ____cacheline_aligned;
 #ifndef MODULE_ARCH_INIT
@@ -789,7 +799,7 @@ static inline void module_bug_finalize(const Elf_Ehdr *hdr,
 static inline void module_bug_cleanup(struct module *mod) {}
 #endif	/* CONFIG_GENERIC_BUG */
 
-#ifdef RETPOLINE
+#ifdef CONFIG_RETPOLINE
 extern bool retpoline_module_ok(bool has_retpoline);
 #else
 static inline bool retpoline_module_ok(bool has_retpoline)
@@ -809,5 +819,15 @@ static inline bool module_sig_ok(struct module *module)
 	return true;
 }
 #endif	/* CONFIG_MODULE_SIG */
+
+#ifdef CONFIG_BPF_JIT
+const struct exception_table_entry *search_bpf_extables(unsigned long addr);
+#else
+static inline const struct exception_table_entry *
+search_bpf_extables(unsigned long addr)
+{
+	return NULL;
+}
+#endif
 
 #endif /* _LINUX_MODULE_H */

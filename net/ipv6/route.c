@@ -64,6 +64,7 @@
 #include <net/l3mdev.h>
 
 #include <asm/uaccess.h>
+#include <linux/btf_ids.h>
 
 #ifdef CONFIG_SYSCTL
 #include <linux/sysctl.h>
@@ -155,7 +156,7 @@ static void rt6_uncached_list_flush_dev(struct net *net, struct net_device *dev)
 			struct inet6_dev *rt_idev = rt->rt6i_idev;
 			struct net_device *rt_dev = rt->dst.dev;
 
-			if (rt_idev->dev == dev) {
+			if (rt_idev && rt_idev->dev == dev) {
 				rt->rt6i_idev = in6_dev_get(loopback_dev);
 				in6_dev_put(rt_idev);
 			}
@@ -1353,7 +1354,8 @@ static void __ip6_rt_update_pmtu(struct dst_entry *dst, const struct sock *sk,
 		return;
 
 	dst_confirm(dst);
-	mtu = max_t(u32, mtu, IPV6_MIN_MTU);
+	if (mtu < IPV6_MIN_MTU)
+		return;
 	if (mtu >= dst_mtu(dst))
 		return;
 
@@ -1556,12 +1558,17 @@ static unsigned int ip6_default_advmss(const struct dst_entry *dst)
 {
 	struct net_device *dev = dst->dev;
 	unsigned int mtu = dst_mtu(dst);
-	struct net *net = dev_net(dev);
+	struct net *net;
 
 	mtu -= sizeof(struct ipv6hdr) + sizeof(struct tcphdr);
 
+	rcu_read_lock();
+
+	net = dev_net_rcu(dev);
 	if (mtu < net->ipv6.sysctl.ip6_rt_min_advmss)
 		mtu = net->ipv6.sysctl.ip6_rt_min_advmss;
+
+	rcu_read_unlock();
 
 	/*
 	 * Maximal non-jumbo IPv6 payload is IPV6_MAXPLEN and
@@ -3494,12 +3501,16 @@ int ipv6_sysctl_rtcache_flush(struct ctl_table *ctl, int write,
 {
 	struct net *net;
 	int delay;
+	int ret;
 	if (!write)
 		return -EINVAL;
 
+	ret = proc_dointvec(ctl, write, buffer, lenp, ppos);
+	if (ret)
+		return ret;
+
 	net = (struct net *)ctl->extra1;
 	delay = net->ipv6.sysctl.flush_delay;
-	proc_dointvec(ctl, write, buffer, lenp, ppos);
 	fib6_run_gc(delay <= 0 ? 0 : (unsigned long)delay, net, delay > 0);
 	return 0;
 }
@@ -3762,6 +3773,39 @@ void __init ip6_route_init_special_entries(void)
   #endif
 }
 
+#if IS_BUILTIN(CONFIG_IPV6)
+#if defined(CONFIG_BPF_SYSCALL) && defined(CONFIG_PROC_FS)
+DEFINE_BPF_ITER_FUNC(ipv6_route, struct bpf_iter_meta *meta, struct rt6_info *rt)
+
+BTF_ID_LIST(btf_rt6_info_id)
+BTF_ID(struct, rt6_info)
+
+static struct bpf_iter_reg ipv6_route_reg_info = {
+	.target			= "ipv6_route",
+	.seq_ops		= &ipv6_route_seq_ops,
+	.init_seq_private	= bpf_iter_init_seq_net,
+	.fini_seq_private	= bpf_iter_fini_seq_net,
+	.seq_priv_size		= sizeof(struct ipv6_route_iter),
+	.ctx_arg_info_size	= 1,
+	.ctx_arg_info		= {
+		{ offsetof(struct bpf_iter__ipv6_route, rt),
+		  PTR_TO_BTF_ID_OR_NULL },
+	},
+};
+
+static int __init bpf_iter_register(void)
+{
+	ipv6_route_reg_info.ctx_arg_info[0].btf_id = *btf_rt6_info_id;
+	return bpf_iter_reg_target(&ipv6_route_reg_info);
+}
+
+static void bpf_iter_unregister(void)
+{
+	bpf_iter_unreg_target(&ipv6_route_reg_info);
+}
+#endif
+#endif
+
 int __init ip6_route_init(void)
 {
 	int ret;
@@ -3814,6 +3858,14 @@ int __init ip6_route_init(void)
 	if (ret)
 		goto out_register_late_subsys;
 
+#if IS_BUILTIN(CONFIG_IPV6)
+#if defined(CONFIG_BPF_SYSCALL) && defined(CONFIG_PROC_FS)
+	ret = bpf_iter_register();
+	if (ret)
+		goto out_register_late_subsys;
+#endif
+#endif
+
 	for_each_possible_cpu(cpu) {
 		struct uncached_list *ul = per_cpu_ptr(&rt6_uncached_list, cpu);
 
@@ -3845,6 +3897,11 @@ out_kmem_cache:
 
 void ip6_route_cleanup(void)
 {
+#if IS_BUILTIN(CONFIG_IPV6)
+#if defined(CONFIG_BPF_SYSCALL) && defined(CONFIG_PROC_FS)
+	bpf_iter_unregister();
+#endif
+#endif
 	unregister_netdevice_notifier(&ip6_route_dev_notifier);
 	unregister_pernet_subsys(&ip6_route_net_late_ops);
 	fib6_rules_cleanup();
