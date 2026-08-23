@@ -96,7 +96,7 @@ USE_CCACHE=yes
 THREADS=$(grep -c "processor" /proc/cpuinfo)
 
 # root directory where toolchains are downloaded/extracted to
-TOOLCHAINS_DIR=/workspaces/toolchains
+TOOLCHAINS_DIR=/tmp/src/android/toolchains
 
 # Neutron Clang lives here; installed automatically via AntMan if missing
 CLANG_DIR=$TOOLCHAINS_DIR/neutron-clang
@@ -195,7 +195,7 @@ export CLANG_TRIPLE="aarch64-linux-gnu-"
 export LLVM=1
 export LLVM_IAS=1
 if [ "$USE_CCACHE" = "yes" ]; then
-  export CCACHE_DIR="/workspaces/ccache"
+  export CCACHE_DIR="/tmp/src/android/ccache"
   mkdir -p "$CCACHE_DIR" || ABORT "Failed to create $CCACHE_DIR"
   MAKE_CC="ccache clang"
 else
