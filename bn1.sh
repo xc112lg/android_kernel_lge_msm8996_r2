@@ -68,7 +68,7 @@
 ################################# CONFIG #################################
 
 # Assume build_all is not being used, will be automatically changed if it is
-SINGLEBUILD="yes"
+SINGLEBUILD="no"
 
 # root directory of this kernel (this script's location)
 RDIR=$(pwd)
