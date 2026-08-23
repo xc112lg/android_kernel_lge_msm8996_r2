@@ -794,6 +794,7 @@ struct __kernel_timespec {
 };
 #endif
 #endif
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 #include <linux/kernel.h>

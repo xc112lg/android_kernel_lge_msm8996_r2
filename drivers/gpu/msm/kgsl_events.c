@@ -292,7 +292,7 @@ static int kgsl_add_event_common(struct kgsl_device *device,
 	event->group = group;
 	event->prio = prio;
 
-	init_kthread_work(&event->work, _kgsl_event_worker);
+	kthread_init_work(&event->work, _kgsl_event_worker);
 
 	trace_kgsl_register_event(
 		KGSL_CONTEXT_ID(context), timestamp, func, prio);

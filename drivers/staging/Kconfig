@@ -4,7 +4,7 @@ menuconfig STAGING
 	---help---
 	  This option allows you to select a number of drivers that are
 	  not of the "normal" Linux kernel quality level.  These drivers
-	  are placed here in order to get a wider audience to make use of
+	  are placed here in order to get a wideyr audience to make use of
 	  them.  Please note that these drivers are under heavy
 	  development, may or may not work, and may contain userspace
 	  interfaces that most likely will be changed in the near
@@ -110,6 +110,6 @@ source "drivers/staging/wilc1000/Kconfig"
 
 source "drivers/staging/most/Kconfig"
 
-source "drivers/staging/qcacld-3.0/Kconfig"
+
 
 endif # STAGING

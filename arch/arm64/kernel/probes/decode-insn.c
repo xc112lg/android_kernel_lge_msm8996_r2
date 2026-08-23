@@ -16,7 +16,6 @@
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
 #include <linux/module.h>
-#include <asm/kprobes.h>
 #include <asm/insn.h>
 #include <asm/sections.h>
 
@@ -165,7 +164,15 @@ arm_kprobe_decode_insn(kprobe_opcode_t *addr, struct arch_specific_insn *asi)
 		preempt_enable();
 	}
 #endif
-	decoded = arm_probe_decode_insn(insn, &asi->api);
+	if (aarch64_insn_is_ldr_lit(insn)) {
+		asi->api.handler = simulate_ldr_literal;
+		decoded = INSN_GOOD_NO_SLOT;
+	} else if (aarch64_insn_is_ldrsw_lit(insn)) {
+		asi->api.handler = simulate_ldrsw_literal;
+		decoded = INSN_GOOD_NO_SLOT;
+	} else {
+		decoded = arm_probe_decode_insn(insn, &asi->api);
+	}
 
 	if (decoded == INSN_REJECTED ||
 			is_probed_address_atomic(scan_start, scan_end))

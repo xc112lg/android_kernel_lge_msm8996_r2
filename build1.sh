@@ -96,7 +96,7 @@ USE_CCACHE=yes
 THREADS=$(grep -c "processor" /proc/cpuinfo)
 
 # root directory where toolchains are downloaded/extracted to
-TOOLCHAINS_DIR=/tmp/src/android/toolchains
+TOOLCHAINS_DIR=/workspaces/toolchains
 
 # toolchain source repo (Eva GCC) - URLs are resolved to the latest release at runtime
 EVAGCC_REPO="mvaisakh/gcc-build"
@@ -122,7 +122,7 @@ COLOR_P="\033[1;35m"
 
 ABORT() {
 	echo -e $COLOR_R"Error: $*"
-	exit 1
+	#exit 1
 }
 
 # downloads & extracts a toolchain archive if it isn't already present
@@ -264,7 +264,7 @@ export LOCALVERSION="-${VER}"
 export CROSS_COMPILE=$GCC_COMP
 export CROSS_COMPILE_ARM32=$GCC_COMP_32
 if [ "$USE_CCACHE" = "yes" ]; then
-  export CCACHE_DIR="/tmp/src/android/ccache"
+  export CCACHE_DIR="/workspaces/ccache"
   mkdir -p "$CCACHE_DIR" || ABORT "Failed to create $CCACHE_DIR"
   MAKE_CC="ccache ${GCC_COMP}gcc"
 else
