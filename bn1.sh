@@ -90,7 +90,7 @@ KBUSER=stendro_+_AShiningRay_+_continued_by_xc112lg
 KBHOST=crave.io
 
 # ccache: yes or no
-USE_CCACHE=yes
+USE_CCACHE=no
 
 # select cpu threads
 THREADS=$(grep -c "processor" /proc/cpuinfo)
