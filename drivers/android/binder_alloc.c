@@ -1048,7 +1048,7 @@ enum lru_status binder_alloc_free_page(struct list_head *item,
 		trace_binder_unmap_user_end(alloc, index);
 	}
 	up_write(&mm->mmap_sem);
-	mmput_async(mm);
+	mmput(mm);
 
 	trace_binder_unmap_kernel_start(alloc, index);
 
@@ -1095,12 +1095,6 @@ static struct shrinker binder_shrinker = {
 	.seeks = DEFAULT_SEEKS,
 };
 
-void binder_alloc_shrinker_exit(void)
-{
-	unregister_shrinker(&binder_shrinker);
-	list_lru_destroy(&binder_alloc_lru);
-}
-
 /**
  * binder_alloc_init() - called by binder_open() for per-proc initialization
  * @alloc: binder_alloc for this proc
@@ -1125,6 +1119,12 @@ int binder_alloc_shrinker_init(void)
 			list_lru_destroy(&binder_alloc_lru);
 	}
 	return ret;
+}
+
+void binder_alloc_shrinker_exit(void)
+{
+	unregister_shrinker(&binder_shrinker);
+	list_lru_destroy(&binder_alloc_lru);
 }
 
 /**
