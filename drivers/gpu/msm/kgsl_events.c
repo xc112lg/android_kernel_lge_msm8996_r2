@@ -46,7 +46,9 @@ static void _kgsl_event_worker(struct kthread_work *work)
 {
 	struct kgsl_event *event = container_of(work, struct kgsl_event, work);
 
-	trace_kgsl_fire_event(id, event->timestamp, event->result,
+	trace_kgsl_fire_event(event->context ? event->context->id :
+			KGSL_MEMSTORE_GLOBAL,
+		event->timestamp, event->result,
 		jiffies - event->created, event->func, event->prio);
 
 	event->func(event->device, event->group, event->priv, event->result);
@@ -389,6 +391,18 @@ void kgsl_add_event_group(struct kgsl_event_group *group,
 	write_unlock(&group_lock);
 }
 EXPORT_SYMBOL(kgsl_add_event_group);
+
+const char *prio_to_string(enum kgsl_priority prio)
+{
+	switch (prio) {
+	case KGSL_EVENT_REGULAR_PRIORITY:
+		return "regular";
+	case KGSL_EVENT_LOW_PRIORITY:
+		return "low";
+	default:
+		return "unknown";
+	}
+}
 
 static void events_debugfs_print_group(struct seq_file *s,
 		struct kgsl_event_group *group)

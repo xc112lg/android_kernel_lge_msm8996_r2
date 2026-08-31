@@ -12,6 +12,8 @@ mpi-y = \
 	generic_mpih-rshift.o		\
 	generic_mpih-sub1.o		\
 	generic_mpih-add1.o		\
+	mpihelp-add.o			\
+	mpihelp-sub.o			\
 	mpicoder.o			\
 	mpi-bit.o			\
 	mpi-cmp.o			\

@@ -2423,9 +2423,12 @@ static void _dispatcher_power_down(struct adreno_device *adreno_dev)
 	mutex_unlock(&device->mutex);
 }
 
-static void adreno_dispatcher_work(struct adreno_device *adreno_dev)
+static void adreno_dispatcher_work(struct kthread_work *work)
 {
-	struct adreno_dispatcher *dispatcher = &adreno_dev->dispatcher;
+	struct adreno_dispatcher *dispatcher =
+		container_of(work, struct adreno_dispatcher, work);
+	struct adreno_device *adreno_dev =
+		container_of(dispatcher, struct adreno_device, dispatcher);
 	struct kgsl_device *device = KGSL_DEVICE(adreno_dev);
 	struct adreno_gpudev *gpudev = ADRENO_GPU_DEVICE(adreno_dev);
 	int count = 0;
@@ -2495,7 +2498,7 @@ static int adreno_dispatcher_thread(void *data)
 		if (should_stop)
 			break;
 
-		adreno_dispatcher_work(adreno_dev);
+		adreno_dispatcher_work(&dispatcher->work);
 	}
 
 	return 0;

@@ -975,6 +975,7 @@ static int map_lookup_elem(union bpf_attr *attr)
 	u32 value_size;
 	struct fd f;
 	int err;
+	char value_onstack[16];
 
 	if (CHECK_ATTR(BPF_MAP_LOOKUP_ELEM))
 		return -EINVAL;

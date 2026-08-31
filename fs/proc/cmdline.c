@@ -31,7 +31,10 @@ static void proc_command_line_init(void) {
 static void proc_cmdline_set(char *name, char *value)
 {
 	char *flag_pos, *flag_after;
-	char *flag_pos_str = kmalloc(sizeof(char), COMMAND_LINE_SIZE);
+	char *flag_pos_str = kmalloc(COMMAND_LINE_SIZE, GFP_KERNEL);
+
+	if (!flag_pos_str)
+		return;
 
 	scnprintf(flag_pos_str, COMMAND_LINE_SIZE, "%s=", name);
 
@@ -48,6 +51,8 @@ static void proc_cmdline_set(char *name, char *value)
 		// flag was found, insert it
 		scnprintf(updated_command_line, COMMAND_LINE_SIZE, "%s %s=%s", updated_command_line, name, value);
 	}
+
+	kfree(flag_pos_str);
 }
 
 static int cmdline_proc_show(struct seq_file *m, void *v)
