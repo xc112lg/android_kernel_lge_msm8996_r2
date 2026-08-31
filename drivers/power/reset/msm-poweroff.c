@@ -299,9 +299,9 @@ static void msm_restart_prepare(const char *cmd)
 	need_warm_reset = true;
 #endif
 
-	/* Perform a regular reboot upon panic or unspecified command */
+	/* Perform a recovery reboot upon panic or unspecified command */
 	if (in_panic || !cmd) {
-		__raw_writel(0x77665501, restart_reason);
+		__raw_writel(0x77665502, restart_reason);
 		cmd = NULL;
 		in_panic = false;
 	}
@@ -393,7 +393,7 @@ static void msm_restart_prepare(const char *cmd)
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 		} else {
-			__raw_writel(0x77665501, restart_reason);
+			__raw_writel(0x77665502, restart_reason);
 		}
 	}
 
