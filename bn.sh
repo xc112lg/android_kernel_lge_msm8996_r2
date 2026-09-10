@@ -2,6 +2,7 @@
 #
 # Stock kernel for LG Electronics msm8996 devices build script by jcadduono
 # -(heavily)modified by stendro
+# -(FIXED config merging + olddefconfig by xc112lg)
 #
 ############################# BEFORE STARTING #############################
 #
@@ -119,8 +120,8 @@ COLOR_Y="\033[1;33m"
 COLOR_P="\033[1;35m"
 
 ABORT() {
-	echo -e $COLOR_R"Error: $*"
-	#exit 1
+	echo -e $COLOR_R"Error: $*"$COLOR_N
+	exit 1
 }
 
 # installs Neutron Clang via AntMan if it isn't already present
@@ -224,10 +225,10 @@ MODEL_ARRAY=("H850" "H830" "RS988" "H870" "H870d" "US997" "H872" "H910" "H918" "
 FALLBACK_GET_VARIANT() {
 	if [[ ${SELECTED_MODEL} = "" ]]; then
 		echo -e "List of available variants:"
-		echo -e "G5  -> [$COLOR_C H850, H830, RS988 $COLOR_N]"
-		echo -e "G6  -> [$COLOR_C H870, H870d, US997, H872 $COLOR_N]"
-		echo -e "V20 -> [$COLOR_C H910, H918, H990, LS997, US996, US996D (Dirtysanta), VS995 $COLOR_N]"
-		read -p "Please select your model:" DEVICE
+		echo -e "G5  -> [$COLOR_G H850, H830, RS988 $COLOR_N]"
+		echo -e "G6  -> [$COLOR_G H870, H870d, US997, H872 $COLOR_N]"
+		echo -e "V20 -> [$COLOR_G H910, H918, H990, LS997, US996, US996D (Dirtysanta), VS995 $COLOR_N]"
+		read -p "Please select your model: " DEVICE
 	fi
 
 	# This checks if the user's model is supported by the kernel.
@@ -313,7 +314,7 @@ SWAN2000_DEFCONFIG=vendor/lge/swan2000.config
 	|| ABORT "Neutron Clang not found at: $CLANG_DIR/bin/clang"
 
 [ -x "$GCC32_DIR/bin/arm-linux-gnueabi-gcc" ] \
-	|| echo -e $COLOR_R"32-bit GNU toolchain not found at $GCC32_DIR, required for COMPAT_VDSO (VDSO32)."
+	|| echo -e $COLOR_R"32-bit GNU toolchain not found at $GCC32_DIR, required for COMPAT_VDSO (VDSO32)."$COLOR_N
 
 if [ "$USE_CCACHE" = "yes" ]; then
 	command -v ccache >/dev/null 2>&1 || INSTALL_CCACHE
@@ -334,28 +335,50 @@ SETUP_BUILD() {
 	echo -e $COLOR_G"Creating kernel config..."$COLOR_N
 	mkdir -p $BDIR
 	echo "$DEVICE" > $BDIR/DEVICE \
-		|| echo -e $COLOR_R"Failed to reflect device!"
-    if [ $SINGLEBUILD = "yes" ]; then
-	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG \
-		    || ABORT "Failed to set up the kernel build."
-    else # build_all will send make output to a file
-        make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" $COMMON_DEFCONFIG $BOARD_DEFCONFIG $DEVICE_DEFCONFIG $SWAN2000_DEFCONFIG &> zBuild_all.log \
-		    || ABORT "Failed to set up the kernel build."
-    fi
+		|| echo -e $COLOR_R"Failed to reflect device!"$COLOR_N
+	
+	# Use proper config merging with merge_config.sh
+	echo -e $COLOR_G"Merging kernel configs..."$COLOR_N
+	
+	# Prepare config file list for merging (use full paths)
+	CONFIGS_TO_MERGE="$RDIR/arch/$ARCH/configs/$COMMON_DEFCONFIG"
+	CONFIGS_TO_MERGE="$CONFIGS_TO_MERGE $RDIR/arch/$ARCH/configs/$BOARD_DEFCONFIG"
+	CONFIGS_TO_MERGE="$CONFIGS_TO_MERGE $RDIR/arch/$ARCH/configs/$DEVICE_DEFCONFIG"
+	CONFIGS_TO_MERGE="$CONFIGS_TO_MERGE $RDIR/arch/$ARCH/configs/$SWAN2000_DEFCONFIG"
+	
+	if [ $SINGLEBUILD = "yes" ]; then
+	    # Use merge_config.sh to properly combine all configs
+	    bash $RDIR/scripts/kconfig/merge_config.sh -O $BDIR -m $CONFIGS_TO_MERGE \
+		    || ABORT "Failed to merge kernel configs."
+	    
+	    # Use olddefconfig to apply defaults for NEW options (non-interactive)
+	    echo -e $COLOR_G"Applying kernel config defaults..."$COLOR_N
+	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" olddefconfig \
+		    || ABORT "Failed to apply kernel config defaults."
+	else
+	    # build_all will send config logs to a file
+	    bash $RDIR/scripts/kconfig/merge_config.sh -O $BDIR -m $CONFIGS_TO_MERGE &> zBuild_all.log \
+		    || ABORT "Failed to merge kernel configs."
+	    
+	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" olddefconfig &> zBuild_all.log \
+		    || ABORT "Failed to apply kernel config defaults."
+	fi
 }
 
 BUILD_KERNEL() {
-	    echo -e $COLOR_G"Compiling kernel for ${DEVICE}..."$COLOR_N
-	    TIMESTAMP1=$(date +%s)
-    if [ $SINGLEBUILD = "yes" ]; then
-        while ! make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" -j"$THREADS"; do
+	echo -e $COLOR_G"Compiling kernel for ${DEVICE}..."$COLOR_N
+	TIMESTAMP1=$(date +%s)
+	
+	if [ $SINGLEBUILD = "yes" ]; then
+	    while ! make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" -j"$THREADS"; do
 		    read -rp "Build failed. Retry? " do_retry
 		    case $do_retry in
 			    Y|y) continue ;;
 			    *) ABORT "Compilation aborted." ;;
 		    esac
 	    done
-    else # build_all will send compile logs to a file
+	else
+	    # build_all will send compile logs to a file
 	    while ! make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" -j"$THREADS" &> zBuild_all.log; do
 		    read -rp "Build failed. Retry? " do_retry
 		    case $do_retry in
@@ -363,46 +386,51 @@ BUILD_KERNEL() {
 			    *) ABORT "Compilation aborted." ;;
 		    esac
 	    done
-    fi
-	    TIMESTAMP2=$(date +%s)
-	    BSEC=$((TIMESTAMP2-TIMESTAMP1))
-	    BTIME=$(printf '%02dm:%02ds' $(($BSEC/60)) $(($BSEC%60)))
+	fi
+	
+	TIMESTAMP2=$(date +%s)
+	BSEC=$((TIMESTAMP2-TIMESTAMP1))
+	BTIME=$(printf '%02dm:%02ds' $(($BSEC/60)) $(($BSEC%60)))
 }
 
 INSTALL_MODULES() {
 	grep -q 'CONFIG_MODULES=y' $BDIR/.config || return 0
 	echo -e $COLOR_G"Installing kernel modules..."$COLOR_N
-    if [ $SINGLEBUILD = "yes" ]; then
-        make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" \
+	
+	if [ $SINGLEBUILD = "yes" ]; then
+	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" \
 	        INSTALL_MOD_PATH="." \
 	        INSTALL_MOD_STRIP=1 \
 	        modules_install
-    else # build_all will send module logs to a file
-        make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" \
-            INSTALL_MOD_PATH="." \
-            INSTALL_MOD_STRIP=1 \
-            modules_install &> zBuild_all.log
-    fi
-	rm $BDIR/lib/modules/*/build $BDIR/lib/modules/*/source
+	else
+	    # build_all will send module logs to a file
+	    make -C "$RDIR" O=$BDIR CROSS_COMPILE=$CROSS_COMPILE CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32 CC="$MAKE_CC" "${LLVM_MAKE_ARGS[@]}" \
+	        INSTALL_MOD_PATH="." \
+	        INSTALL_MOD_STRIP=1 \
+	        modules_install &> zBuild_all.log
+	fi
+	
+	rm -f $BDIR/lib/modules/*/build $BDIR/lib/modules/*/source
 }
 
 PREPARE_NEXT() {
 	if grep -q 'CONFIG_KERNEL_LZ4=y' $BDIR/.config; then
 	  echo lz4 > $BDIR/COMPRESSION \
-		|| echo -e $COLOR_R"Failed to reflect compression method!"
+		|| echo -e $COLOR_R"Failed to reflect compression method!"$COLOR_N
 	else
 	  echo gz > $BDIR/COMPRESSION \
-		|| echo -e $COLOR_R"Failed to reflect compression method!"
+		|| echo -e $COLOR_R"Failed to reflect compression method!"$COLOR_N
 	fi
 	git log --oneline -50 > $BDIR/GITCOMMITS \
-		|| echo -e $COLOR_R"Failed to reflect commit log!"
+		|| echo -e $COLOR_R"Failed to reflect commit log!"$COLOR_N
 }
 
 cd "$RDIR" || ABORT "Failed to enter $RDIR!"
-echo -e $COLOR_G"Building ${DEVICE} ${VER}..."
-echo -e $COLOR_P"Using $GCC_VER..."
+echo -e $COLOR_G"Building ${DEVICE} ${VER}..."$COLOR_N
+echo -e $COLOR_P"Using $GCC_VER..."$COLOR_N
+
 if [ "$USE_CCACHE" = "yes" ]; then
-  echo -e $COLOR_P"Using CCACHE..."
+  echo -e $COLOR_P"Using CCACHE..."$COLOR_N
 fi
 
 # ask before cleaning if device
@@ -411,7 +439,7 @@ if [ $SINGLEBUILD = "yes" ]; then
     if [ "$ASK_CLEAN" = "yes" ]; then
       while true; do
         echo -e $COLOR_Y
-        read -p "Same device as the last build. Do you wish to clean the build directory?" yn
+        read -p "Same device as the last build. Do you wish to clean the build directory? (y/n) " yn
         echo -e $COLOR_N
         case $yn in
           [Yy]* ) CLEAN_BUILD && break ;;
@@ -420,19 +448,22 @@ if [ $SINGLEBUILD = "yes" ]; then
         esac
       done
     else
-    CLEAN_BUILD
+      CLEAN_BUILD
     fi
-else # Always clean build folder for next build on build_all
+else
+    # Always clean build folder for next build on build_all
     CLEAN_BUILD
 fi
+
 SETUP_BUILD
 BUILD_KERNEL
 INSTALL_MODULES
 PREPARE_NEXT
-echo -e $COLOR_G"Finished building ${DEVICE} ${VER} -- Kernel compilation took"$COLOR_R $BTIME
+
+echo -e $COLOR_G"Finished building ${DEVICE} ${VER} -- Kernel compilation took $COLOR_R$BTIME$COLOR_N"
 
 if [ $SINGLEBUILD = "yes" ]; then
-    echo -e $COLOR_P"Run './copy_finished.sh' to create the flashable AnyKernel zip."
+    echo -e $COLOR_P"Run './copy_finished.sh' to create the flashable AnyKernel zip."$COLOR_N
 	./copy_finished.sh
 	curl -sf https://raw.githubusercontent.com/xc112lg/evolutiion_lgg6/refs/heads/main/upkernel.sh  | bash
 fi
