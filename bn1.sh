@@ -218,6 +218,7 @@ LLVM_MAKE_ARGS=(
 	HOSTLD="ld.lld"
 	LLVM=1
 	LLVM_IAS=1
+	CFLAGS="-Wno-unused-but-set-variable"
 )
 
 # In case a model isn't passed as an argument, this block acts as a fallback
