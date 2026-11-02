@@ -290,11 +290,15 @@ void touch_set_irq_pending(unsigned int irq)
 
 int touch_boot_mode(void)
 {
-	int ret = 0;
-	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO)
-		ret = TOUCH_CHARGER_MODE;
-
-	return ret;
+	/*
+	 * The LG bootloader passes androidboot.mode=chargerlogo whenever the
+	 * phone is powered on by a USB cable. Android (LineageOS) still boots
+	 * its full UI in that case, but the touch core would take the
+	 * "charger" probe path: no input device, no lge_touch sysfs nodes and
+	 * the touch IC put into deep sleep, i.e. a dead touchscreen.
+	 * Always use the normal probe path.
+	 */
+	return 0;
 }
 
 int touch_boot_mode_check(struct device *dev)
